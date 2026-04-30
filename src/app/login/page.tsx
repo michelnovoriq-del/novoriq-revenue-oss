@@ -1,27 +1,18 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // [CODEX PATCH]
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import api from '@/lib/api'; // [CODEX PATCH]
+import api from '@/lib/api'; 
 
-type AuthResponse = { // [CODEX PATCH]
-    token: string; // [CODEX PATCH]
-}; // [CODEX PATCH]
-
-type ApiErrorResponse = { // [CODEX PATCH]
-    message?: string; // [CODEX PATCH]
-    response?: { // [CODEX PATCH]
-        data?: { // [CODEX PATCH]
-            error?: string; // [CODEX PATCH]
-        }; // [CODEX PATCH]
-    }; // [CODEX PATCH]
-}; // [CODEX PATCH]
+type AuthResponse = {
+    token: string;
+};
 
 export default function LoginPage() {
-    const router = useRouter(); // [CODEX PATCH]
+    const router = useRouter();
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -32,116 +23,139 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // [DEBUG TRACER 1] Proves the button click actually triggered the function
+        console.log("[Auth Protocol] Form submitted. Setting loading state...");
         setLoading(true);
         setError('');
-        try { // [CODEX PATCH]
-            const endpoint = isLogin ? '/auth/login' : '/auth/register'; // [CODEX PATCH]
-            const payload = isLogin // [CODEX PATCH]
-                ? { email, password } // [CODEX PATCH]
-                : { email, password, organizationName: orgName, promoCode }; // [CODEX PATCH]
-            const res = await api.post<AuthResponse>(endpoint, payload); // [CODEX PATCH]
-            localStorage.setItem('novoriq_token', res.data.token); // [CODEX PATCH]
-            router.push('/dashboard'); // [CODEX PATCH]
-        } catch (err: unknown) { // [CODEX PATCH]
-            const apiError = err as ApiErrorResponse; // [CODEX PATCH]
-            setError(apiError.message === 'Network Error' // [CODEX PATCH]
-                ? 'NEXUS_OFFLINE: Ensure the backend engine is running.' // [CODEX PATCH]
-                : apiError.response?.data?.error || 'AUTH_PROTOCOL_REJECTED'); // [CODEX PATCH]
-        } finally { // [CODEX PATCH]
-            setLoading(false); // [CODEX PATCH]
-        } // [CODEX PATCH]
+
+        try {
+            const endpoint = isLogin ? '/auth/login' : '/auth/register';
+            const payload = isLogin 
+                ? { email, password } 
+                : { email, password, organizationName: orgName, promoCode };
+
+            // [DEBUG TRACER 2] Proves the payload was formatted correctly
+            console.log(`[Auth Protocol] Attempting to hit ${endpoint} with:`, payload);
+
+            // If the code freezes, it is hanging EXACTLY on this next line.
+            const res = await api.post<AuthResponse>(endpoint, payload);
+            
+            // [DEBUG TRACER 3] Proves the server responded
+            console.log("[Auth Protocol] Server Response Received:", res.data);
+
+            if (res.data?.token) {
+                localStorage.setItem('novoriq_token', res.data.token);
+                console.log("[Auth Protocol] Token secured. Redirecting to Dashboard...");
+                router.push('/dashboard');
+            } else {
+                throw new Error("Invalid response format: Missing token");
+            }
+
+        } catch (err: any) {
+            // [DEBUG TRACER 4] Catches any silent crashes
+            console.error("[Auth Protocol] CRITICAL FAILURE:", err);
+            
+            const errorMessage = err.response?.data?.error 
+                || err.message 
+                || 'Authentication services currently unreachable.';
+            
+            setError(errorMessage);
+        } finally {
+            console.log("[Auth Protocol] Execution finished. Removing loading state.");
+            setLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-obsidian text-slate-300 font-mono overflow-hidden">
-            {/* Background Data Grid */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[linear-gradient(to_right,#1a3a2f_1px,transparent_1px),linear-gradient(to_bottom,#1a3a2f_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA] text-slate-900 font-sans overflow-hidden selection:bg-blue-100 selection:text-blue-900">
+            {/* Premium Ambient Background */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/10 blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/10 blur-[120px] pointer-events-none" />
             
             <motion.div 
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 className="z-10 w-full max-w-md px-6"
             >
-                {/* Header Section */}
-                <div className="flex flex-col items-center mb-10">
+                {/* Enterprise Header Section */}
+                <div className="flex flex-col items-center mb-8">
                     <motion.div 
-                        animate={{ rotateY: [0, 360] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                        className="border border-jade-muted p-3 mb-4"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+                        className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-6"
                     >
-                        <Shield className="w-8 h-8 text-jade-muted" />
+                        <ShieldCheck className="w-8 h-8 text-blue-600" strokeWidth={2.5} />
                     </motion.div>
-                    <h1 className="text-xl tracking-[0.3em] uppercase text-white font-bold">Jade_Dynasty_OS</h1>
-                    <div className="h-[1px] w-24 bg-jade-muted mt-2 overflow-hidden">
-                        <motion.div 
-                            animate={{ x: [-100, 100] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-full h-full bg-white opacity-50" 
-                        />
-                    </div>
+                    <h1 className="text-2xl tracking-tight text-slate-900 font-bold">
+                        Novoriq Revenue OS
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-2 font-medium">
+                        {isLogin ? "Sign in to your workspace" : "Initialize your automated engine"}
+                    </p>
                 </div>
 
-                {/* Main Card */}
-                <div className="bg-jade-deep/80 backdrop-blur-md border border-jade-line p-8 relative">
-                    {/* Decorative Corner Accents */}
-                    <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-jade-muted" />
-                    <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-jade-muted" />
-                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-jade-muted" />
-                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-jade-muted" />
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Main Premium Card */}
+                <div className="bg-white/80 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-slate-200/50 rounded-3xl p-8 relative">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={isLogin ? 'login' : 'register'}
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 10 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
                                 className="space-y-4"
                             >
                                 {!isLogin && (
-                                    <div className="group">
-                                        <label className="text-[10px] uppercase tracking-widest text-jade-muted group-focus-within:text-white transition-colors">Workspace_ID</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Workspace Name</label>
                                         <input 
                                             type="text" 
-                                            placeholder="ACME_CORP"
+                                            placeholder="Acme Corp"
                                             value={orgName}
                                             onChange={(e) => setOrgName(e.target.value)}
-                                            className="w-full bg-transparent border-b border-jade-line py-2 text-white focus:outline-none focus:border-white transition-colors placeholder:text-jade-line/50"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
                                             required={!isLogin}
                                         />
                                     </div>
                                 )}
 
-                                <div className="group">
-                                    <label className="text-[10px] uppercase tracking-widest text-jade-muted group-focus-within:text-white transition-colors">Access_Email</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Work Email</label>
                                     <input 
                                         type="email"
+                                        placeholder="commander@company.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-transparent border-b border-jade-line py-2 text-white focus:outline-none focus:border-white transition-colors"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
                                         required 
                                     />
                                 </div>
 
-                                <div className="group">
-                                    <label className="text-[10px] uppercase tracking-widest text-jade-muted group-focus-within:text-white transition-colors">Pass_Cipher</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Password</label>
                                     <input 
                                         type="password"
+                                        placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-transparent border-b border-jade-line py-2 text-white focus:outline-none focus:border-white transition-colors"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
                                         required 
                                     />
                                 </div>
 
                                 {!isLogin && (
-                                    <div className="group">
-                                        <label className="text-[10px] uppercase tracking-widest text-jade-muted">VIP_Protocol (OPT)</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Invite Code <span className="text-slate-400 normal-case font-normal">(Optional)</span></label>
                                         <input 
                                             type="text"
+                                            placeholder="VIP-ACCESS"
                                             value={promoCode}
                                             onChange={(e) => setPromoCode(e.target.value)}
-                                            className="w-full bg-transparent border-b border-jade-line py-2 text-white focus:outline-none focus:border-white transition-colors"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
                                         />
                                     </div>
                                 )}
@@ -151,54 +165,47 @@ export default function LoginPage() {
                         <button 
                             type="submit" 
                             disabled={loading}
-                            className="w-full border border-jade-muted py-3 px-4 flex items-center justify-between group hover:bg-jade-muted hover:text-obsidian transition-all duration-300 disabled:opacity-30"
+                            className="w-full bg-slate-900 text-white rounded-xl py-3.5 px-4 flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all duration-200 disabled:opacity-70 disabled:active:scale-100 shadow-lg shadow-slate-900/20 mt-6"
                         >
-                            <span className="text-xs uppercase tracking-[0.2em] font-bold">
-                                {loading ? "Decrypting..." : (isLogin ? "Authenticate" : "Deploy_Engine")}
+                            <span className="text-sm font-semibold tracking-wide">
+                                {loading ? "Authenticating..." : (isLogin ? "Sign In" : "Create Workspace")}
                             </span>
                             {loading ? (
-                                <motion.div 
-                                    animate={{ rotate: 360 }}
-                                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                                    className="w-4 h-4 border-2 border-t-transparent border-white rounded-full"
-                                />
-                            ) : <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : <ArrowRight className="w-4 h-4" />}
                         </button>
                     </form>
 
-                    <div className="mt-8 flex justify-between items-center border-t border-jade-line pt-4">
-                        <button 
-                            onClick={() => setIsLogin(!isLogin)}
-                            className="text-[10px] uppercase tracking-tighter text-jade-muted hover:text-white transition-colors"
-                        >
-                            {isLogin ? "[ Create_New_Auth ]" : "[ Return_to_Auth ]"}
-                        </button>
-                        <span className="text-[8px] text-jade-line uppercase tracking-widest">v1.0.4_Stable</span>
-                    </div>
+                    {/* Error Banner */}
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                className="bg-red-50 text-red-600 text-sm font-medium p-3 rounded-xl border border-red-100 text-center"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
-                {/* Error Terminal */}
-                <AnimatePresence>
-                    {error && (
-                        <motion.div 
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="mt-4 bg-red-900/10 border border-red-900/50 p-3 overflow-hidden"
-                        >
-                            <p className="text-[10px] text-red-500 uppercase leading-tight font-bold">
-                                !! system_alert: {error}
-                            </p>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* Footer Toggles */}
+                <div className="mt-8 flex flex-col items-center gap-4">
+                    <button 
+                        onClick={() => setIsLogin(!isLogin)}
+                        className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        {isLogin ? "Need a workspace? Create an account" : "Already have access? Sign in"}
+                    </button>
+                    
+                    <div className="flex gap-6 text-xs font-medium text-slate-400">
+                        <Link href="/terms" className="hover:text-slate-600 transition-colors">Terms</Link>
+                        <Link href="/privacy" className="hover:text-slate-600 transition-colors">Privacy</Link>
+                    </div>
+                </div>
             </motion.div>
-
-            {/* Bottom Footer */}
-            <div className="mt-12 flex gap-6 text-[10px] tracking-widest text-jade-line uppercase">
-                <Link href="/terms" className="hover:text-jade-muted transition-colors">Term_Protocol</Link>
-                <Link href="/privacy" className="hover:text-jade-muted transition-colors">Privacy_Cipher</Link>
-            </div>
         </div>
     );
 }

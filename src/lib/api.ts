@@ -1,11 +1,9 @@
 import axios from 'axios';
 
-// Safely handle the base URL whether in dev or production
-// We remove the trailing '/api' from here because we will ensure 
-// the environment variable holds the full path (e.g., http://localhost:3000/api)
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
-    timeout: 15000, // Hardened: prevent dead backend requests from hanging the onboarding UI indefinitely.
+    // [PATCH] Hardcoding the Render URL as the fallback completely eliminates the Localhost Mixed-Content block.
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://novoriqrevenueosapi.onrender.com/api',
+    timeout: 15000, 
 });
 
 api.interceptors.request.use((config) => {
@@ -15,11 +13,19 @@ api.interceptors.request.use((config) => {
             config.headers.Authorization = `Bearer ${token}`;
         }
     }
-    
-    // Hardened: removed browser console request logging so production users do not expose API paths/timing.
     return config;
 }, (error) => {
+    console.error("[Axios Request Protocol Failure]:", error);
     return Promise.reject(error);
 });
+
+// [NEW TRACER PATCH] This catches silent network drops, CORS blocks, or timeout deaths
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        console.error("[Axios Response Terminal Error]:", error.message);
+        return Promise.reject(error);
+    }
+);
 
 export default api;

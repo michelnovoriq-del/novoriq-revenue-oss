@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { isAxiosError } from 'axios';
 import api from '@/lib/api'; 
 
 type AuthResponse = {
@@ -52,12 +53,13 @@ export default function LoginPage() {
                 throw new Error("Invalid response format: Missing token");
             }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             // [DEBUG TRACER 4] Catches any silent crashes
             console.error("[Auth Protocol] CRITICAL FAILURE:", err);
             
-            const errorMessage = err.response?.data?.error 
-                || err.message 
+            const apiError = isAxiosError<{ error?: string }>(err) ? err.response?.data?.error : undefined;
+            const errorMessage = apiError
+                || (err instanceof Error ? err.message : undefined)
                 || 'Authentication services currently unreachable.';
             
             setError(errorMessage);

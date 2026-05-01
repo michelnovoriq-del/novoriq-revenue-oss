@@ -2,385 +2,287 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { isAxiosError } from 'axios';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import api from '@/lib/api';
 import { 
   Activity, ShieldCheck, Key, FileText, Download, 
-  Link as LinkIcon, CheckCircle2, Cpu, Zap, Lock, Loader2
+  Link as LinkIcon, CheckCircle2, Cpu, Zap, Lock, Loader2, ArrowRight, CreditCard, Sparkles
 } from 'lucide-react';
 
 const LIVE_ENGINE_URL = 'https://novoriqrevenueosapi.onrender.com';
 
-type DashboardMetrics = {
-    organizationId: string;
-    totalDisputes: number;
-    revenueRecoveredFormatted: string;
-    performanceFeeOwedFormatted: string;
-    pdfsGenerated: number;
-    pdfLimit: string;
-    currentTierLabel: string;
-    currentFeeLabel: string;
-    hasStripeKey: boolean;
-    tier?: string;
+// --- BILLING CONFIGURATION ---
+const TEST_PLAN_ID = 'plan_V3eDZlxhqz03e'; // $0 Testing Plan
+const BETA_PLAN_ID = 'plan_g5k8i3tfPkASV'; // $10 Beta Access
+
+// --- SIMULATED EXECUTIVE DATA ---
+const MOCK_METRICS = {
+    organizationId: 'demo_01_nexus',
+    totalDisputes: 24,
+    revenueRecoveredFormatted: '$12,840.00',
+    performanceFeeOwedFormatted: '$0.00',
+    pdfsGenerated: 24,
+    pdfLimit: 'Unlimited (Demo)',
+    currentTierLabel: 'Interactive Demo',
+    currentFeeLabel: 'Elite Tier',
+    hasStripeKey: false,
 };
 
-type DashboardDispute = {
-    id: string;
-    stripeId: string;
-    status: string;
-    evidencePdfUrl?: string | null;
-    payment: {
-        amount: number;
-    };
+const MOCK_DISPUTES = [
+    { id: 'mock_1', stripeId: 'dp_1Q7zXYZ90L...', status: 'WON', payment: { amount: 150000 }, evidencePdfUrl: '#' },
+    { id: 'mock_2', stripeId: 'dp_1Q8aABC12M...', status: 'WON', payment: { amount: 29900 }, evidencePdfUrl: '#' },
+    { id: 'mock_3', stripeId: 'dp_1Q8bDEF34N...', status: 'WON', payment: { amount: 85000 }, evidencePdfUrl: '#' },
+    { id: 'mock_4', stripeId: 'dp_1Q9cGHJ56P...', status: 'PROCESSING', payment: { amount: 45000 }, evidencePdfUrl: null },
+];
+
+const MASTER_CODES = ['JADE-FOUNDER-2026', 'NOVO-ELITE-UNLOCK'];
+
+// --- EXECUTIVE LOGO COMPONENT ---
+const NovoriqLogo = () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900">
+        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+
+// --- ANIMATION VARIANTS ---
+const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
-type DashboardMetricsResponse = {
-    metrics: DashboardMetrics;
-    tier?: string;
-    organization?: {
-        tier?: string;
-    };
+const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
-type DashboardDisputesResponse = {
-    disputes: DashboardDispute[];
-};
-
-export default function DashboardPage() {
+export default function DemoPage() {
     const router = useRouter();
-    const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-    const [disputes, setDisputes] = useState<DashboardDispute[]>([]);
-    const [stripeKey, setStripeKey] = useState('');
-    const [keyStatus, setKeyStatus] = useState('');
-    const [isKeyLoading, setIsKeyLoading] = useState(false);
-    const [webhookCopied, setWebhookCopied] = useState(false);
+    const [isUnlocked, setIsUnlocked] = useState(false);
+    const [promoCode, setPromoCode] = useState('');
+    const [promoError, setPromoError] = useState('');
+    const [isUnlocking, setIsUnlocking] = useState(false);
+    const [orgId, setOrgId] = useState<string | null>(null);
 
-    const fetchData = useCallback(async () => {
-        console.log("[Dashboard Protocol] Fetching live metrics and ledger...");
-        try {
-            const [metricsRes, disputesRes] = await Promise.all([ 
-                api.get<DashboardMetricsResponse>('/dashboard/metrics'), 
-                api.get<DashboardDisputesResponse>('/dashboard/disputes') 
-            ]);
-            
-            console.log("[Dashboard Protocol] Engine Data Received:", { metrics: metricsRes.data, disputes: disputesRes.data });
-
-            const metricsData = { ...metricsRes.data.metrics };
-            const rawTier = metricsData.tier || metricsRes.data.tier || metricsRes.data.organization?.tier;
-            const isGodMode = rawTier === 'ALL_TIERS' || metricsData.currentTierLabel === 'ALL_TIERS';
-
-            if (isGodMode) {
-                metricsData.currentTierLabel = 'Enterprise (God Mode)';
-                metricsData.pdfLimit = 'Unlimited';
-                metricsData.currentFeeLabel = '0% Waived';
-            } else {
-                const status = metricsData.currentTierLabel;
-                if (status === 'Expired') return router.push('/pricing');
-                if (status === 'Inactive / Locked') return router.push('/demo');
-            }
-
-            setMetrics(metricsData);
-            setDisputes(disputesRes.data.disputes);
-        } catch (err) { 
-            console.error("[Dashboard Protocol] Initialization failed. Redirecting to auth:", err);
-            router.push('/login'); 
-        }
-    }, [router]);
-
+    // Get real OrgID if user is logged in to ensure the webhook updates the right account
     useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
-            void fetchData();
-        }, 0);
+        api.get('/dashboard/metrics')
+            .then(res => setOrgId(res.data.metrics.organizationId))
+            .catch(() => setOrgId(null));
+    }, []);
 
-        return () => window.clearTimeout(timeoutId);
-    }, [fetchData]);
-
-    const handleConnectStripe = async (e: React.FormEvent) => {
+    const handlePromoUnlock = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("[Security Protocol] Encrypting and transmitting Stripe key...");
-        setIsKeyLoading(true);
-        setKeyStatus("");
-        try {
-            await api.post('/dashboard/keys', { stripeSecretKey: stripeKey });
-            console.log("[Security Protocol] Key synced securely.");
-            setStripeKey('');
-            await fetchData(); 
-        } catch (err: unknown) { 
-            console.error("[Security Protocol] Key transmission failed:", err);
-            const apiError = isAxiosError<{ error?: string }>(err) ? err.response?.data?.error : undefined;
-            setKeyStatus(apiError || "Connection refused. Verify API limits."); 
-        } finally {
-            setIsKeyLoading(false);
+        setIsUnlocking(true);
+        setPromoError('');
+        setTimeout(() => {
+            if (MASTER_CODES.includes(promoCode.trim())) {
+                setIsUnlocked(true);
+            } else {
+                setPromoError('Invalid Elite access code.');
+            }
+            setIsUnlocking(false);
+        }, 800);
+    };
+
+    const handlePaymentRedirect = (planId: string) => {
+        if (!orgId) {
+            router.push('/login');
+            return;
         }
+        // Using the direct plan URL format with external_id metadata
+        const checkoutUrl = `https://whop.com/checkout/${planId}?external_id=${orgId}`;
+        window.open(checkoutUrl, '_blank');
     };
-
-    const copyWebhook = () => {
-        if (!metrics) return;
-        const targetUrl = `${LIVE_ENGINE_URL}/api/webhooks/stripe/${metrics.organizationId}`;
-        
-        void navigator.clipboard.writeText(targetUrl)
-            .then(() => {
-                console.log("[Data Relay] Webhook URL copied to clipboard.");
-                setWebhookCopied(true);
-                setTimeout(() => setWebhookCopied(false), 3000);
-            })
-            .catch((err) => {
-                console.error("[Data Relay] Clipboard access denied by browser.", err);
-                setKeyStatus("Browser blocked clipboard. Please select and copy manually.");
-            });
-    };
-
-    const downloadPdf = async (disputeId: string) => {
-        console.log(`[Evidence Engine] Requesting PDF compilation for dispute: ${disputeId}`);
-        try {
-            const res = await api.get(`/dashboard/disputes/${disputeId}/pdf`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([res.data]));
-            const link = document.createElement('a'); 
-            link.href = url; 
-            link.setAttribute('download', `Novoriq_Evidence_${disputeId}.pdf`); 
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-            console.log(`[Evidence Engine] PDF downloaded successfully.`);
-        } catch (err) { 
-            console.error("[Evidence Engine] Failed to retrieve document:", err);
-            alert("Secure document retrieval failed. Please try again."); 
-        }
-    };
-
-    // Premium Loading Screen
-    if (!metrics) return (
-        <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center font-sans">
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center gap-5"
-            >
-                <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" strokeWidth={2.5} />
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                    <span className="text-sm font-semibold text-slate-900 tracking-tight">Initializing Workspace</span>
-                    <span className="text-xs text-slate-500 font-medium">Establishing secure connection...</span>
-                </div>
-            </motion.div>
-        </div>
-    );
 
     return (
-        <div className="min-h-screen bg-[#FAFAFA] text-slate-900 font-sans p-4 md:p-8 overflow-x-hidden selection:bg-blue-100 selection:text-blue-900">
-            {/* Premium Ambient Light */}
-            <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-400/5 blur-[120px] pointer-events-none" />
-            <div className="fixed bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-400/5 blur-[120px] pointer-events-none" />
-
-            <div className="max-w-7xl mx-auto space-y-8 relative z-10">
-                
-                {/* Top Navigation Bar */}
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-6 gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-200">
-                            <Zap className="text-blue-600 w-6 h-6" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                                Novoriq OS <span className="text-xs text-slate-400 font-medium tracking-normal bg-slate-100 px-2 py-0.5 rounded-full">v2.1.0</span>
-                            </h1>
-                            <p className="text-sm text-slate-500 font-medium mt-0.5">Workspace configuration & live telemetry</p>
-                        </div>
-                    </div>
-                    
+        <div className="min-h-screen bg-[#FDFDFD] text-zinc-900 font-sans p-4 md:p-8 overflow-x-hidden relative selection:bg-zinc-200">
+            
+            {/* --- THE ELITE GATEWAY OVERLAY --- */}
+            <AnimatePresence>
+                {!isUnlocked && (
                     <motion.div 
-                        whileHover={{ y: -1 }}
-                        className={`px-4 py-1.5 rounded-full border text-xs font-semibold tracking-wide shadow-sm flex items-center gap-2 ${
-                            metrics.currentTierLabel.includes('God') 
-                                ? 'bg-slate-900 text-white border-slate-900' 
-                                : 'bg-white text-blue-700 border-blue-200'
-                        }`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-zinc-900/5"
                     >
-                        <div className={`w-1.5 h-1.5 rounded-full ${metrics.currentTierLabel.includes('God') ? 'bg-emerald-400' : 'bg-blue-600'} animate-pulse`} />
-                        {metrics.currentTierLabel}
+                        <motion.div 
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-zinc-100"
+                        >
+                            <div className="flex justify-center mb-6">
+                                <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 shadow-inner">
+                                    <Lock className="w-8 h-8 text-zinc-900" />
+                                </div>
+                            </div>
+                            <h2 className="text-2xl font-extrabold text-center text-zinc-900 mb-2">Unlock Revenue OS</h2>
+                            <p className="text-sm text-zinc-500 text-center font-medium mb-8 leading-relaxed">
+                                Deploy the autonomous evidence engine. Secure lifetime beta access for $10 or run an E2E test.
+                            </p>
+
+                            <div className="space-y-3 mb-6">
+                                <button 
+                                    onClick={() => handlePaymentRedirect(BETA_PLAN_ID)}
+                                    className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-4 text-sm font-bold transition-all flex justify-center items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                                >
+                                    <CreditCard className="w-4 h-4" /> Secure Access — $10
+                                </button>
+                                
+                                {/* 🧪 TESTING LINK BUTTON */}
+                                <button 
+                                    onClick={() => handlePaymentRedirect(TEST_PLAN_ID)}
+                                    className="w-full bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50 rounded-xl py-3 text-xs font-bold transition-all flex justify-center items-center gap-2 active:scale-[0.98]"
+                                >
+                                    Run End-to-End Test — $0
+                                </button>
+                            </div>
+
+                            <div className="relative flex items-center py-2 mb-6">
+                                <div className="flex-grow border-t border-zinc-100"></div>
+                                <span className="flex-shrink-0 mx-4 text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Elite Validation</span>
+                                <div className="flex-grow border-t border-zinc-100"></div>
+                            </div>
+
+                            <form onSubmit={handlePromoUnlock} className="space-y-4">
+                                <input 
+                                    type="text" 
+                                    placeholder="Enter Master Promo Code" 
+                                    value={promoCode}
+                                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                                    className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-zinc-900 rounded-xl px-4 py-3.5 text-sm font-mono text-center outline-none transition-all"
+                                />
+                                <button 
+                                    type="submit" 
+                                    disabled={!promoCode || isUnlocking}
+                                    className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                                >
+                                    {isUnlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4" /> Apply Master Code</>}
+                                </button>
+                                {promoError && <p className="text-xs text-red-600 font-bold text-center mt-3">{promoError}</p>}
+                            </form>
+                        </motion.div>
                     </motion.div>
-                </header>
+                )}
+            </AnimatePresence>
 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {[
-                        { label: 'Active Disputes', val: metrics.totalDisputes, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: 'Revenue Secured', val: metrics.revenueRecoveredFormatted, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                        { label: 'Evidence Capacity', val: `${metrics.pdfsGenerated} / ${metrics.pdfLimit}`, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                        { label: 'Protocol Fee', val: metrics.performanceFeeOwedFormatted, icon: Cpu, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    ].map((m, i) => (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                            key={m.label} 
-                            className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <div className={`p-2.5 rounded-xl ${m.bg}`}>
-                                    <m.icon className={`w-5 h-5 ${m.color}`} strokeWidth={2.5} />
-                                </div>
-                            </div>
-                            <div className="text-sm font-semibold text-slate-500 mb-1">{m.label}</div>
-                            <div className="text-3xl font-bold text-slate-900 tracking-tight">{m.val}</div>
-                        </motion.div>
-                    ))}
-                </div>
+            {/* --- SIMULATED DASHBOARD BACKGROUND --- */}
+            <div className={`transition-all duration-1000 ${!isUnlocked ? 'blur-lg opacity-40 grayscale pointer-events-none' : 'blur-0 opacity-100'}`}>
+                <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-gradient-to-b from-zinc-100 to-transparent pointer-events-none opacity-50 blur-3xl z-0" />
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-7xl mx-auto space-y-8 relative z-10">
                     
-                    {/* Sidebar Configuration */}
-                    <aside className="lg:col-span-4 space-y-6">
-                        {/* Step 1: Stripe Integration */}
-                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
-                            <div className="flex items-center gap-2 mb-6">
-                                <div className="bg-slate-100 p-1.5 rounded-lg">
-                                    <Key className="w-4 h-4 text-slate-700" /> 
-                                </div>
-                                <h3 className="font-bold text-sm tracking-tight text-slate-900">Secure Vault</h3>
+                    <motion.header variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 gap-4 border-b border-zinc-200/60">
+                        <div className="flex items-center gap-5">
+                            <div className="p-3 bg-white rounded-2xl shadow-sm border border-zinc-100">
+                                <NovoriqLogo />
                             </div>
-                            
-                            {!metrics.hasStripeKey ? (
-                                <form onSubmit={handleConnectStripe} className="space-y-4">
-                                    <p className="text-xs text-slate-500 font-medium">Inject your Stripe Restricted Key to allow the engine to monitor and compile evidence.</p>
-                                    <input 
-                                        type="password" 
-                                        placeholder="rk_live_••••••••••••••••" 
-                                        value={stripeKey} 
-                                        onChange={(e) => setStripeKey(e.target.value)} 
-                                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono transition-all outline-none" 
-                                        required 
-                                    />
-                                    <button 
-                                        type="submit" 
-                                        disabled={isKeyLoading}
-                                        className="w-full bg-slate-900 text-white hover:bg-slate-800 rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-70 disabled:active:scale-100 active:scale-[0.98] flex justify-center items-center gap-2"
-                                    >
-                                        {isKeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Encrypt & Save Key"}
-                                    </button>
-                                </form>
-                            ) : (
-                                <div className="flex items-center gap-3 text-emerald-700 border border-emerald-100 p-4 bg-emerald-50 rounded-xl">
-                                    <Lock className="w-5 h-5 text-emerald-600" /> 
+                            <div>
+                                <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 flex items-center gap-3">
+                                    Novoriq OS <span className="text-[10px] text-emerald-700 font-bold tracking-widest uppercase bg-emerald-50 px-2.5 py-1 rounded-md">Interactive Demo</span>
+                                </h1>
+                                <p className="text-sm text-zinc-500 font-medium mt-1">Autonomous Revenue Defense & Evidence Compilation</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-white shadow-sm text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                            {MOCK_METRICS.currentTierLabel}
+                        </div>
+                    </motion.header>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        {[
+                            { label: 'Network Disputes', val: MOCK_METRICS.totalDisputes, icon: Activity },
+                            { label: 'Revenue Secured', val: MOCK_METRICS.revenueRecoveredFormatted, icon: ShieldCheck },
+                            { label: 'Evidence Capacity', val: MOCK_METRICS.pdfLimit, icon: FileText },
+                            { label: 'Protocol Fee', val: MOCK_METRICS.currentFeeLabel, icon: Cpu },
+                        ].map((m) => (
+                            <motion.div variants={itemVariants} key={m.label} className="bg-white rounded-2xl border border-zinc-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="text-xs font-bold text-zinc-500 tracking-wider uppercase">{m.label}</div>
+                                    <m.icon className="w-4 h-4 text-zinc-400" />
+                                </div>
+                                <div className="text-3xl font-extrabold text-zinc-900 tracking-tighter">{m.val}</div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <aside className="lg:col-span-4 space-y-6">
+                            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="bg-zinc-100 p-2 rounded-md"><Key className="w-4 h-4 text-zinc-700" /></div>
+                                    <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Cryptographic Vault</h3>
+                                </div>
+                                <p className="text-xs text-zinc-500 font-medium mb-5">Vault operations are simulated in demo mode.</p>
+                                <div className="flex items-center gap-4 border border-zinc-200 p-4 bg-zinc-50 rounded-xl opacity-60">
+                                    <div className="bg-white p-2 rounded-lg border border-zinc-200"><Lock className="w-5 h-5 text-zinc-900" /></div>
                                     <div>
-                                        <div className="text-sm font-bold">Vault Locked</div>
-                                        <div className="text-xs font-medium text-emerald-600/80">API keys secured via AES-256</div>
+                                        <div className="text-sm font-bold text-zinc-900">Vault Locked</div>
+                                        <div className="text-xs font-medium text-zinc-500">AES-256 Protocol</div>
                                     </div>
                                 </div>
-                            )}
-                            <AnimatePresence>
-                                {keyStatus && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: "auto" }}
-                                        className="mt-4 text-xs font-semibold text-red-600 bg-red-50 p-3 rounded-lg border border-red-100"
-                                    >
-                                        {keyStatus}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                            </motion.div>
 
-                        {/* Step 2: Webhook Sync */}
-                        <motion.div 
-                            animate={{ opacity: !metrics.hasStripeKey ? 0.4 : 1, filter: !metrics.hasStripeKey ? 'grayscale(1)' : 'grayscale(0)' }}
-                            className={`bg-white rounded-2xl border border-slate-200 p-6 shadow-sm ${!metrics.hasStripeKey ? 'pointer-events-none' : ''}`}
-                        >
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="bg-slate-100 p-1.5 rounded-lg">
-                                    <LinkIcon className="w-4 h-4 text-slate-700" /> 
+                            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="bg-zinc-100 p-2 rounded-md"><LinkIcon className="w-4 h-4 text-zinc-700" /></div>
+                                    <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Data Relay</h3>
                                 </div>
-                                <h3 className="font-bold text-sm tracking-tight text-slate-900">Data Relay</h3>
-                            </div>
-                            <p className="text-xs text-slate-500 font-medium leading-relaxed mb-5">Add this endpoint to your Stripe Developers dashboard to enable autonomous tracking.</p>
-                            
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs font-mono text-slate-600 break-all mb-4 selection:bg-blue-100">
-                                {`${LIVE_ENGINE_URL}/api/webhooks/stripe/${metrics.organizationId}`}
-                            </div>
-                            
-                            <button 
-                                onClick={copyWebhook} 
-                                className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl py-3 text-sm font-semibold transition-all flex justify-center items-center gap-2 active:scale-[0.98]"
-                            >
-                                {webhookCopied ? <><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Copied to Clipboard</> : 'Copy Endpoint URL'}
-                            </button>
-                        </motion.div>
-                    </aside>
+                                <div className="bg-zinc-900 text-zinc-300 rounded-xl p-4 text-[11px] font-mono break-all mb-5">
+                                    {`${LIVE_ENGINE_URL}/api/webhooks/stripe/${orgId || 'demo_nexus_guest'}`}
+                                </div>
+                                <button onClick={() => alert('Webhook copied (Demo Only)')} className="w-full bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-900 rounded-xl py-3.5 text-sm font-bold transition-all flex justify-center items-center gap-2 active:scale-[0.98]">
+                                    Copy Payload URL
+                                </button>
+                            </motion.div>
+                        </aside>
 
-                    {/* Main Dispute Ledger */}
-                    <main className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                        <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
-                            <h2 className="text-sm font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                                <Activity className="w-4 h-4 text-blue-600" /> Transaction Ledger
-                            </h2>
-                        </div>
-                        
-                        <div className="overflow-x-auto flex-1">
-                            <table className="w-full text-sm text-left whitespace-nowrap">
-                                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-6 py-4">Transaction ID</th>
-                                        <th className="px-6 py-4">Value</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4 text-right">Evidence Packet</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {disputes.map((d, idx) => (
-                                        <motion.tr 
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05, duration: 0.3 }}
-                                            key={d.id} 
-                                            className="hover:bg-slate-50 transition-colors group"
-                                        >
-                                            <td className="px-6 py-4 font-mono text-slate-600 text-xs">
-                                                {d.stripeId}
-                                            </td>
-                                            <td className="px-6 py-4 font-bold text-slate-900">
-                                                ${(d.payment.amount / 100).toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                                                    d.status.toLowerCase() === 'won' 
-                                                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                                                    : 'bg-amber-100 text-amber-700 border border-amber-200'
-                                                }`}>
-                                                    {d.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {d.evidencePdfUrl ? (
-                                                    <button 
-                                                        onClick={() => downloadPdf(d.id)} 
-                                                        className="text-slate-600 hover:text-blue-600 flex items-center gap-1.5 ml-auto text-xs font-semibold group-hover:underline underline-offset-4 transition-colors"
-                                                    >
-                                                        <Download className="w-3.5 h-3.5" /> Download
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-slate-400 text-xs font-medium flex items-center gap-1.5 justify-end">
-                                                        <Loader2 className="w-3 h-3 animate-spin" /> Compiling
+                        <motion.main variants={itemVariants} className="lg:col-span-8 bg-white rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col">
+                            <div className="p-7 border-b border-zinc-100 bg-zinc-50/50">
+                                <h2 className="text-sm font-bold tracking-wide uppercase text-zinc-900 flex items-center gap-3">
+                                    <Activity className="w-4 h-4 text-zinc-400" /> Transaction Ledger
+                                </h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-zinc-50/50 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
+                                        <tr>
+                                            <th className="px-7 py-5">Network ID</th>
+                                            <th className="px-7 py-5">Contested</th>
+                                            <th className="px-7 py-5">Resolution</th>
+                                            <th className="px-7 py-5 text-right">Dossier</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-zinc-50">
+                                        {MOCK_DISPUTES.map((d) => (
+                                            <motion.tr variants={itemVariants} key={d.id} className="hover:bg-zinc-50/80 transition-colors">
+                                                <td className="px-7 py-5 font-mono text-zinc-500 text-xs">{d.stripeId}</td>
+                                                <td className="px-7 py-5 font-bold text-zinc-900">${(d.payment.amount / 100).toLocaleString()}</td>
+                                                <td className="px-7 py-5">
+                                                    <span className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${d.status === 'WON' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-zinc-100 text-zinc-600 border border-zinc-200'}`}>
+                                                        {d.status}
                                                     </span>
-                                                )}
-                                            </td>
-                                        </motion.tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {disputes.length === 0 && (
-                                <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
-                                    <div className="bg-slate-50 p-4 rounded-full">
-                                        <ShieldCheck className="w-8 h-8 text-slate-300" />
-                                    </div>
-                                    <div className="text-slate-500 text-sm font-medium">No disputes detected in the network.</div>
-                                </div>
-                            )}
-                        </div>
-                    </main>
-                </div>
+                                                </td>
+                                                <td className="px-7 py-5 text-right">
+                                                    {d.evidencePdfUrl ? (
+                                                        <button onClick={() => alert('Exporting simulated dossier...')} className="text-zinc-900 hover:text-blue-600 flex items-center gap-2 ml-auto text-xs font-bold transition-colors">
+                                                            <Download className="w-4 h-4" /> Export
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-zinc-400 text-xs font-semibold flex items-center gap-2 justify-end"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Compiling</span>
+                                                    )}
+                                                </td>
+                                            </motion.tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </motion.main>
+                    </div>
+                </motion.div>
             </div>
         </div>
     );

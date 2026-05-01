@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import api from '@/lib/api';
 import { 
   Activity, ShieldCheck, Key, FileText, Download, 
-  Link as LinkIcon, Cpu, Lock, Loader2, CreditCard, Sparkles
+  Link as LinkIcon, Cpu, Lock, Loader2, CreditCard, Sparkles, ArrowRight
 } from 'lucide-react';
 
 const LIVE_ENGINE_URL = 'https://novoriqrevenueosapi.onrender.com';
 
 // --- BILLING CONFIGURATION ---
-const E2E_CHECKOUT_URL = 'https://whop.com/novoriq-revenue-os/novoriq-revenue-flow/';
-const TEST_PLAN_ID = 'plan_12uLHFgtctUFl'; // E2E Testing Plan
+const TEST_PLAN_ID = 'plan_rUbJAjG7Mt0mv'; // Updated E2E Testing Plan
 const BETA_PLAN_ID = 'plan_g5k8i3tfPkASV'; // $10 Beta Access
 
 // --- SIMULATED EXECUTIVE DATA ---
@@ -66,7 +65,7 @@ export default function DemoPage() {
     const [isUnlocking, setIsUnlocking] = useState(false);
     const [orgId, setOrgId] = useState<string | null>(null);
 
-    // Get real OrgID if user is logged in to ensure the webhook updates the right account
+    // Get real OrgID to ensure the webhook updates the right account
     useEffect(() => {
         api.get('/dashboard/metrics')
             .then(res => setOrgId(res.data.metrics.organizationId))
@@ -87,205 +86,184 @@ export default function DemoPage() {
         }, 800);
     };
 
-    const handlePaymentRedirect = (planId: string, checkoutBaseUrl?: string) => {
+    const handlePaymentRedirect = (planId: string, isE2E: boolean = false) => {
         if (!orgId) {
             router.push('/login');
             return;
         }
-        const checkoutUrl = checkoutBaseUrl
-            ? `${checkoutBaseUrl}?external_id=${orgId}&plan_id=${planId}`
+        
+        // Exact routing requirement for E2E and Beta
+        const checkoutUrl = isE2E 
+            ? `https://whop.com/checkout/plan_rUbJAjG7Mt0mv?external_id=${orgId}`
             : `https://whop.com/checkout/${planId}?external_id=${orgId}`;
-        window.open(checkoutUrl, '_blank');
+            
+        window.location.href = checkoutUrl;
     };
+
+    if (isUnlocked) {
+        router.push('/dashboard');
+        return null;
+    }
 
     return (
         <div className="min-h-screen bg-[#FDFDFD] text-zinc-900 font-sans p-4 md:p-8 overflow-x-hidden relative selection:bg-zinc-200">
             
-            {/* --- THE ELITE GATEWAY OVERLAY --- */}
-            <AnimatePresence>
-                {!isUnlocked && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-zinc-900/5"
-                    >
-                        <motion.div 
-                            initial={{ scale: 0.95, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-zinc-100"
-                        >
-                            <div className="flex justify-center mb-6">
-                                <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 shadow-inner">
-                                    <Lock className="w-8 h-8 text-zinc-900" />
+            {/* Subtle Background Glow */}
+            <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-gradient-to-b from-zinc-100 to-transparent pointer-events-none opacity-50 blur-3xl z-0" />
+
+            <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-7xl mx-auto space-y-8 relative z-10 pb-24">
+                
+                {/* --- HEADER --- */}
+                <motion.header variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 gap-4 border-b border-zinc-200/60">
+                    <div className="flex items-center gap-5">
+                        <div className="p-3 bg-white rounded-2xl shadow-sm border border-zinc-100">
+                            <NovoriqLogo />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 flex items-center gap-3">
+                                Novoriq OS <span className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase bg-zinc-100 px-2.5 py-1 rounded-md border border-zinc-200">Simulated Data</span>
+                            </h1>
+                            <p className="text-sm text-zinc-500 font-medium mt-1">Autonomous Revenue Defense & Evidence Compilation</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-white shadow-sm text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                        <Lock className="w-3 h-3" /> Read-Only Mode
+                    </div>
+                </motion.header>
+
+                {/* --- METRICS GRID --- */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {[
+                        { label: 'Network Disputes', val: MOCK_METRICS.totalDisputes, icon: Activity },
+                        { label: 'Revenue Secured', val: MOCK_METRICS.revenueRecoveredFormatted, icon: ShieldCheck },
+                        { label: 'Evidence Capacity', val: MOCK_METRICS.pdfLimit, icon: FileText },
+                        { label: 'Protocol Fee', val: MOCK_METRICS.currentFeeLabel, icon: Cpu },
+                    ].map((m) => (
+                        <motion.div variants={itemVariants} key={m.label} className="bg-white rounded-2xl border border-zinc-200/60 p-6 shadow-sm relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] opacity-50 pointer-events-none" />
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="text-xs font-bold text-zinc-500 tracking-wider uppercase">{m.label}</div>
+                                <m.icon className="w-4 h-4 text-zinc-300" />
+                            </div>
+                            <div className="text-3xl font-extrabold text-zinc-400 tracking-tighter">{m.val}</div>
+                        </motion.div>
+                    ))}
+                </div>
+
+                {/* --- DASHBOARD LAYOUT --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <aside className="lg:col-span-4 space-y-6">
+                        <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm opacity-75 grayscale transition-all duration-500 hover:grayscale-0">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-zinc-100 p-2 rounded-md"><Key className="w-4 h-4 text-zinc-700" /></div>
+                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Cryptographic Vault</h3>
+                            </div>
+                            <p className="text-xs text-zinc-500 font-medium mb-5">Vault operations are simulated in demo mode.</p>
+                            <div className="flex items-center gap-4 border border-zinc-200 p-4 bg-zinc-50 rounded-xl">
+                                <div className="bg-white p-2 rounded-lg border border-zinc-200"><Lock className="w-5 h-5 text-zinc-400" /></div>
+                                <div>
+                                    <div className="text-sm font-bold text-zinc-400">Vault Locked</div>
+                                    <div className="text-xs font-medium text-zinc-400">AES-256 Protocol</div>
                                 </div>
                             </div>
-                            <h2 className="text-2xl font-extrabold text-center text-zinc-900 mb-2">Unlock Revenue OS</h2>
-                            <p className="text-sm text-zinc-500 text-center font-medium mb-8 leading-relaxed">
-                                Deploy the autonomous evidence engine. Secure lifetime beta access for $10 or run an E2E test.
+                        </motion.div>
+                    </aside>
+
+                    <motion.main variants={itemVariants} className="lg:col-span-8 bg-white rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col opacity-90">
+                        <div className="p-7 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
+                            <h2 className="text-sm font-bold tracking-wide uppercase text-zinc-900 flex items-center gap-3">
+                                <Activity className="w-4 h-4 text-zinc-400" /> Transaction Ledger
+                            </h2>
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Preview Mode</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-zinc-50/50 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
+                                    <tr>
+                                        <th className="px-7 py-5">Network ID</th>
+                                        <th className="px-7 py-5">Contested</th>
+                                        <th className="px-7 py-5">Resolution</th>
+                                        <th className="px-7 py-5 text-right">Dossier</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-50">
+                                    {MOCK_DISPUTES.map((d) => (
+                                        <motion.tr variants={itemVariants} key={d.id} className="hover:bg-zinc-50/50 transition-colors opacity-70">
+                                            <td className="px-7 py-5 font-mono text-zinc-400 text-xs">{d.stripeId}</td>
+                                            <td className="px-7 py-5 font-bold text-zinc-400">${(d.payment.amount / 100).toLocaleString()}</td>
+                                            <td className="px-7 py-5">
+                                                <span className="px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-zinc-100 text-zinc-500 border border-zinc-200">
+                                                    {d.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-7 py-5 text-right">
+                                                <span className="text-zinc-300 text-xs font-semibold flex items-center gap-2 justify-end"><Lock className="w-3 h-3" /> Locked</span>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.main>
+                </div>
+
+                {/* --- THE PREMIUM CTA BLOCK --- */}
+                <motion.div variants={itemVariants} className="mt-16 bg-zinc-900 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden border border-zinc-800">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div className="max-w-xl">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-[10px] font-bold text-zinc-300 uppercase tracking-widest mb-6">
+                                <Sparkles className="w-3 h-3 text-emerald-400" /> Engine Ready
+                            </div>
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+                                Deploy the Autonomous Engine
+                            </h2>
+                            <p className="text-zinc-400 font-medium leading-relaxed mb-8">
+                                You are currently viewing simulated data. Unlock the Novoriq OS to input your live Stripe keys, automate your webhook parsing, and start compiling evidence dossiers natively.
                             </p>
 
-                            <div className="space-y-3 mb-6">
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
                                 <button 
                                     onClick={() => handlePaymentRedirect(BETA_PLAN_ID)}
-                                    className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-4 text-sm font-bold transition-all flex justify-center items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                                    className="w-full sm:w-auto bg-white text-zinc-900 hover:bg-zinc-100 rounded-xl px-8 py-4 text-sm font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]"
                                 >
                                     <CreditCard className="w-4 h-4" /> Secure Access — $10
                                 </button>
                                 
-                                {/* 🧪 TESTING LINK BUTTON */}
                                 <button 
-                                    onClick={() => handlePaymentRedirect(TEST_PLAN_ID, E2E_CHECKOUT_URL)}
-                                    className="w-full bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50 rounded-xl py-3 text-xs font-bold transition-all flex justify-center items-center gap-2 active:scale-[0.98]"
+                                    onClick={() => handlePaymentRedirect(TEST_PLAN_ID, true)}
+                                    className="w-full sm:w-auto bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 rounded-xl px-8 py-4 text-sm font-bold transition-all flex justify-center items-center gap-2 active:scale-[0.98]"
                                 >
-                                    Run End-to-End Test — $0
+                                    Run E2E Test Flow <ArrowRight className="w-4 h-4" />
                                 </button>
                             </div>
+                        </div>
 
-                            <div className="relative flex items-center py-2 mb-6">
-                                <div className="flex-grow border-t border-zinc-100"></div>
-                                <span className="flex-shrink-0 mx-4 text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Elite Validation</span>
-                                <div className="flex-grow border-t border-zinc-100"></div>
-                            </div>
-
-                            <form onSubmit={handlePromoUnlock} className="space-y-4">
+                        {/* Master Code Fallback */}
+                        <div className="w-full md:w-auto min-w-[280px] bg-zinc-950/50 p-6 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Elite Validation</h3>
+                            <form onSubmit={handlePromoUnlock} className="space-y-3">
                                 <input 
                                     type="text" 
-                                    placeholder="Enter Master Promo Code" 
+                                    placeholder="Enter Master Code" 
                                     value={promoCode}
                                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                                    className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-zinc-900 rounded-xl px-4 py-3.5 text-sm font-mono text-center outline-none transition-all"
+                                    className="w-full bg-zinc-900 border border-zinc-800 focus:bg-zinc-950 focus:border-zinc-700 text-white rounded-xl px-4 py-3 text-sm font-mono text-center outline-none transition-all placeholder:text-zinc-600"
                                 />
                                 <button 
                                     type="submit" 
                                     disabled={!promoCode || isUnlocking}
-                                    className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                                    className="w-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 rounded-xl py-3 text-xs font-bold transition-all active:scale-[0.98] flex justify-center items-center"
                                 >
-                                    {isUnlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4" /> Apply Master Code</>}
+                                    {isUnlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply Code'}
                                 </button>
-                                {promoError && <p className="text-xs text-red-600 font-bold text-center mt-3">{promoError}</p>}
+                                {promoError && <p className="text-xs text-red-500 font-bold text-center mt-2">{promoError}</p>}
                             </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* --- SIMULATED DASHBOARD BACKGROUND --- */}
-            <div className={`transition-all duration-1000 ${!isUnlocked ? 'blur-lg opacity-40 grayscale pointer-events-none' : 'blur-0 opacity-100'}`}>
-                <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-gradient-to-b from-zinc-100 to-transparent pointer-events-none opacity-50 blur-3xl z-0" />
-
-                <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-7xl mx-auto space-y-8 relative z-10">
-                    
-                    <motion.header variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 gap-4 border-b border-zinc-200/60">
-                        <div className="flex items-center gap-5">
-                            <div className="p-3 bg-white rounded-2xl shadow-sm border border-zinc-100">
-                                <NovoriqLogo />
-                            </div>
-                            <div>
-                                <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 flex items-center gap-3">
-                                    Novoriq OS <span className="text-[10px] text-emerald-700 font-bold tracking-widest uppercase bg-emerald-50 px-2.5 py-1 rounded-md">Interactive Demo</span>
-                                </h1>
-                                <p className="text-sm text-zinc-500 font-medium mt-1">Autonomous Revenue Defense & Evidence Compilation</p>
-                            </div>
                         </div>
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-white shadow-sm text-xs font-bold text-zinc-700 uppercase tracking-wider">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                            {MOCK_METRICS.currentTierLabel}
-                        </div>
-                    </motion.header>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                        {[
-                            { label: 'Network Disputes', val: MOCK_METRICS.totalDisputes, icon: Activity },
-                            { label: 'Revenue Secured', val: MOCK_METRICS.revenueRecoveredFormatted, icon: ShieldCheck },
-                            { label: 'Evidence Capacity', val: MOCK_METRICS.pdfLimit, icon: FileText },
-                            { label: 'Protocol Fee', val: MOCK_METRICS.currentFeeLabel, icon: Cpu },
-                        ].map((m) => (
-                            <motion.div variants={itemVariants} key={m.label} className="bg-white rounded-2xl border border-zinc-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="text-xs font-bold text-zinc-500 tracking-wider uppercase">{m.label}</div>
-                                    <m.icon className="w-4 h-4 text-zinc-400" />
-                                </div>
-                                <div className="text-3xl font-extrabold text-zinc-900 tracking-tighter">{m.val}</div>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        <aside className="lg:col-span-4 space-y-6">
-                            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="bg-zinc-100 p-2 rounded-md"><Key className="w-4 h-4 text-zinc-700" /></div>
-                                    <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Cryptographic Vault</h3>
-                                </div>
-                                <p className="text-xs text-zinc-500 font-medium mb-5">Vault operations are simulated in demo mode.</p>
-                                <div className="flex items-center gap-4 border border-zinc-200 p-4 bg-zinc-50 rounded-xl opacity-60">
-                                    <div className="bg-white p-2 rounded-lg border border-zinc-200"><Lock className="w-5 h-5 text-zinc-900" /></div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-900">Vault Locked</div>
-                                        <div className="text-xs font-medium text-zinc-500">AES-256 Protocol</div>
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="bg-zinc-100 p-2 rounded-md"><LinkIcon className="w-4 h-4 text-zinc-700" /></div>
-                                    <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Data Relay</h3>
-                                </div>
-                                <div className="bg-zinc-900 text-zinc-300 rounded-xl p-4 text-[11px] font-mono break-all mb-5">
-                                    {`${LIVE_ENGINE_URL}/api/webhooks/stripe/${orgId || 'demo_nexus_guest'}`}
-                                </div>
-                                <button onClick={() => alert('Webhook copied (Demo Only)')} className="w-full bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-900 rounded-xl py-3.5 text-sm font-bold transition-all flex justify-center items-center gap-2 active:scale-[0.98]">
-                                    Copy Payload URL
-                                </button>
-                            </motion.div>
-                        </aside>
-
-                        <motion.main variants={itemVariants} className="lg:col-span-8 bg-white rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col">
-                            <div className="p-7 border-b border-zinc-100 bg-zinc-50/50">
-                                <h2 className="text-sm font-bold tracking-wide uppercase text-zinc-900 flex items-center gap-3">
-                                    <Activity className="w-4 h-4 text-zinc-400" /> Transaction Ledger
-                                </h2>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-zinc-50/50 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
-                                        <tr>
-                                            <th className="px-7 py-5">Network ID</th>
-                                            <th className="px-7 py-5">Contested</th>
-                                            <th className="px-7 py-5">Resolution</th>
-                                            <th className="px-7 py-5 text-right">Dossier</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-zinc-50">
-                                        {MOCK_DISPUTES.map((d) => (
-                                            <motion.tr variants={itemVariants} key={d.id} className="hover:bg-zinc-50/80 transition-colors">
-                                                <td className="px-7 py-5 font-mono text-zinc-500 text-xs">{d.stripeId}</td>
-                                                <td className="px-7 py-5 font-bold text-zinc-900">${(d.payment.amount / 100).toLocaleString()}</td>
-                                                <td className="px-7 py-5">
-                                                    <span className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${d.status === 'WON' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-zinc-100 text-zinc-600 border border-zinc-200'}`}>
-                                                        {d.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-7 py-5 text-right">
-                                                    {d.evidencePdfUrl ? (
-                                                        <button onClick={() => alert('Exporting simulated dossier...')} className="text-zinc-900 hover:text-blue-600 flex items-center gap-2 ml-auto text-xs font-bold transition-colors">
-                                                            <Download className="w-4 h-4" /> Export
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-zinc-400 text-xs font-semibold flex items-center gap-2 justify-end"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Compiling</span>
-                                                    )}
-                                                </td>
-                                            </motion.tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </motion.main>
                     </div>
                 </motion.div>
-            </div>
+            </motion.div>
         </div>
     );
 }

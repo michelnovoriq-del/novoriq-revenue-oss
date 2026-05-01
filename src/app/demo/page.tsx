@@ -1,18 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import api from '@/lib/api';
 import { 
   Activity, ShieldCheck, Key, FileText, Download, 
-  Link as LinkIcon, CheckCircle2, Cpu, Zap, Lock, Loader2, ArrowRight, CreditCard, Sparkles
+  Link as LinkIcon, Cpu, Lock, Loader2, CreditCard, Sparkles
 } from 'lucide-react';
 
 const LIVE_ENGINE_URL = 'https://novoriqrevenueosapi.onrender.com';
 
 // --- BILLING CONFIGURATION ---
-const TEST_PLAN_ID = 'plan_V3eDZlxhqz03e'; // $0 Testing Plan
+const E2E_CHECKOUT_URL = 'https://whop.com/novoriq-revenue-os/novoriq-revenue-flow/';
+const TEST_PLAN_ID = 'plan_12uLHFgtctUFl'; // E2E Testing Plan
 const BETA_PLAN_ID = 'plan_g5k8i3tfPkASV'; // $10 Beta Access
 
 // --- SIMULATED EXECUTIVE DATA ---
@@ -86,13 +87,14 @@ export default function DemoPage() {
         }, 800);
     };
 
-    const handlePaymentRedirect = (planId: string) => {
+    const handlePaymentRedirect = (planId: string, checkoutBaseUrl?: string) => {
         if (!orgId) {
             router.push('/login');
             return;
         }
-        // Using the direct plan URL format with external_id metadata
-        const checkoutUrl = `https://whop.com/checkout/${planId}?external_id=${orgId}`;
+        const checkoutUrl = checkoutBaseUrl
+            ? `${checkoutBaseUrl}?external_id=${orgId}&plan_id=${planId}`
+            : `https://whop.com/checkout/${planId}?external_id=${orgId}`;
         window.open(checkoutUrl, '_blank');
     };
 
@@ -133,7 +135,7 @@ export default function DemoPage() {
                                 
                                 {/* 🧪 TESTING LINK BUTTON */}
                                 <button 
-                                    onClick={() => handlePaymentRedirect(TEST_PLAN_ID)}
+                                    onClick={() => handlePaymentRedirect(TEST_PLAN_ID, E2E_CHECKOUT_URL)}
                                     className="w-full bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50 rounded-xl py-3 text-xs font-bold transition-all flex justify-center items-center gap-2 active:scale-[0.98]"
                                 >
                                     Run End-to-End Test — $0

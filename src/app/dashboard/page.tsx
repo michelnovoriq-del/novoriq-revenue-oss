@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, Variants } from 'framer-motion'; // Added Variants type
+import { motion, AnimatePresence, Variants } from 'framer-motion'; 
 import api from '@/lib/api';
 import { 
   Activity, ShieldCheck, Key, FileText, Download, 
-  Link as LinkIcon, CheckCircle2, Cpu, Zap, Lock, Loader2, ArrowRight 
+  Link as LinkIcon, CheckCircle2, Cpu, Zap, Lock, Loader2, ArrowRight, Bell 
 } from 'lucide-react';
 
 const LIVE_ENGINE_URL = 'https://novoriqrevenueosapi.onrender.com';
+// [NEW] Direct link to your Python Intelligence Node
+const PYTHON_NODE_URL = process.env.NEXT_PUBLIC_PYTHON_URL || 'https://novoriq-ai-intergration.onrender.com';
 
 // --- TYPES ---
 type DashboardMetrics = {
@@ -60,29 +62,18 @@ const NovoriqLogo = () => (
     </svg>
 );
 
-// --- ANIMATION VARIANTS (Typed for TypeScript Compliance) ---
+// --- ANIMATION VARIANTS ---
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: { 
         opacity: 1, 
-        transition: { 
-            staggerChildren: 0.08, // Optimized for high-end "initialization" feel
-            delayChildren: 0.1 
-        } 
+        transition: { staggerChildren: 0.08, delayChildren: 0.1 } 
     }
 };
 
 const itemVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
-    show: { 
-        opacity: 1, 
-        y: 0, 
-        transition: { 
-            type: "spring", 
-            stiffness: 300, 
-            damping: 24 
-        } 
-    }
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
 export default function DashboardPage() {
@@ -94,15 +85,16 @@ export default function DashboardPage() {
     const [isKeyLoading, setIsKeyLoading] = useState(false);
     const [webhookCopied, setWebhookCopied] = useState(false);
     const [systemError, setSystemError] = useState(false); 
+    
+    // [NEW] Notification State for Python Backend Actions
+    const [aiNotification, setAiNotification] = useState<{show: boolean, message: string}>({ show: false, message: '' });
 
     const fetchData = useCallback(async () => {
         console.log("[Dashboard Protocol] Verifying access tier...");
         try {
             const metricsRes = await api.get<DashboardMetricsResponse>('/dashboard/metrics');
-            
             const metricsData = { ...metricsRes.data.metrics };
             
-            // Fallbacks: Prevent React crashes if backend data is missing
             metricsData.currentTierLabel = metricsData.currentTierLabel || 'Standard';
             metricsData.totalDisputes = metricsData.totalDisputes || 0;
             metricsData.revenueRecoveredFormatted = metricsData.revenueRecoveredFormatted || '$0.00';
@@ -110,20 +102,14 @@ export default function DashboardPage() {
             const rawTier = metricsData.tier || metricsRes.data.tier || metricsRes.data.organization?.tier;
             const isGodMode = rawTier === 'ALL_TIERS' || metricsData.currentTierLabel === 'ALL_TIERS';
 
-            // --- THE EXECUTIVE GATEKEEPER (HARD LOCK) ---
             if (isGodMode) {
                 metricsData.currentTierLabel = 'Enterprise (God Mode)';
                 metricsData.pdfLimit = 'Unlimited';
                 metricsData.currentFeeLabel = '0% Waived';
             } else {
                 const status = metricsData.currentTierLabel;
-                // If account is expired or inactive, redirect to appropriate provisioning page
-                if (status === 'Expired') {
-                    return router.push('/pricing');
-                }
-                if (status === 'Inactive / Locked' || status === 'Inactive') {
-                    return router.push('/demo');
-                }
+                if (status === 'Expired') return router.push('/pricing');
+                if (status === 'Inactive / Locked' || status === 'Inactive') return router.push('/demo');
             }
 
             const disputesRes = await api.get<DashboardDisputesResponse>('/dashboard/disputes');
@@ -185,6 +171,41 @@ export default function DashboardPage() {
         } catch { alert("Secure document retrieval failed."); }
     };
 
+    // --- [NEW] PYTHON BACKEND CONNECTION ---
+    const testAiRecoveryAction = async () => {
+        try {
+            // Display loading notification instantly
+            setAiNotification({ show: true, message: 'Initiating AI Recovery Protocol...' });
+            
+            // Ping the Python Intelligence Node
+            // Note: In production, ensure the x-internal-key matches your Python .env
+            await fetch(`${PYTHON_NODE_URL}/api/v1/trigger-churn-guard`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-internal-key': process.env.NEXT_PUBLIC_INTERNAL_KEY || 'nvq_internal_super_secret_key_123'
+                },
+                body: JSON.stringify({
+                    organization_id: metrics?.organizationId || "demo_org",
+                    customer_email: "test@client.com",
+                    decline_code: "insufficient_funds",
+                    days_until_expiration: 0
+                })
+            });
+
+            // Update notification upon success
+            setAiNotification({ show: true, message: 'AI Action Logged: Recovery SMS & Email Sent Successfully.' });
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => setAiNotification({ show: false, message: '' }), 5000);
+            
+        } catch (error) {
+            console.error("[Python Connection Error]:", error);
+            setAiNotification({ show: true, message: 'Warning: Python Node Unreachable.' });
+            setTimeout(() => setAiNotification({ show: false, message: '' }), 4000);
+        }
+    };
+
     if (systemError) return ( 
         <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md bg-white rounded-3xl border border-red-100 shadow-xl p-8 text-center relative overflow-hidden">
@@ -214,7 +235,25 @@ export default function DashboardPage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#FDFDFD] text-zinc-900 font-sans p-4 md:p-8 overflow-x-hidden selection:bg-zinc-200 selection:text-zinc-900">
+        <div className="min-h-screen bg-[#FDFDFD] text-zinc-900 font-sans p-4 md:p-8 overflow-x-hidden selection:bg-zinc-200 selection:text-zinc-900 relative">
+            
+            {/* [NEW] FLOATING AI NOTIFICATION TOAST */}
+            <AnimatePresence>
+                {aiNotification.show && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 50, x: 50 }} 
+                        animate={{ opacity: 1, y: 0, x: 0 }} 
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        className="fixed bottom-8 right-8 z-50 bg-zinc-900 text-white px-6 py-4 rounded-xl shadow-2xl border border-zinc-800 flex items-center gap-4 max-w-sm"
+                    >
+                        <div className="bg-blue-500/20 p-2 rounded-full">
+                            <Bell className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <p className="text-sm font-medium leading-relaxed">{aiNotification.message}</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-gradient-to-b from-zinc-100 to-transparent pointer-events-none opacity-50 blur-3xl z-0" />
 
             <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-7xl mx-auto space-y-8 relative z-10">
@@ -233,6 +272,15 @@ export default function DashboardPage() {
                     </div>
                     
                     <div className="flex items-center gap-3">
+                        {/* [NEW] Trigger Python Action Button (For Demo/Testing) */}
+                        <button 
+                            onClick={testAiRecoveryAction}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+                        >
+                            <Zap className="w-3.5 h-3.5 text-blue-400" />
+                            Test AI Copilot
+                        </button>
+                        
                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-white shadow-sm text-xs font-bold text-zinc-700 uppercase tracking-wider">
                             <div className={`w-2 h-2 rounded-full ${metrics.currentTierLabel?.includes('God') ? 'bg-emerald-500' : 'bg-blue-500'} animate-pulse shadow-[0_0_8px_rgba(0,0,0,0.1)]`} />
                             {metrics.currentTierLabel}
@@ -240,7 +288,6 @@ export default function DashboardPage() {
                     </div>
                 </motion.header>
 
-                {/* METRICS GRID: Now with stagger container */}
                 <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {[
                         { label: 'Network Disputes', val: metrics.totalDisputes, icon: Activity },

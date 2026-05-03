@@ -3,7 +3,7 @@ import axios from 'axios';
 const api = axios.create({
     // [PATCH] Hardcoding the Render URL as the fallback completely eliminates the Localhost Mixed-Content block.
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://novoriqrevenueosapi.onrender.com/api',
-    timeout: 15000, 
+    timeout: 40000, 
 });
 
 api.interceptors.request.use((config) => {

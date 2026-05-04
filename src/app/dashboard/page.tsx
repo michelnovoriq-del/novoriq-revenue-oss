@@ -10,8 +10,6 @@ import {
 } from 'lucide-react';
 
 const LIVE_ENGINE_URL = 'https://novoriqrevenueosapi.onrender.com';
-// [NEW] Direct link to your Python Intelligence Node
-const PYTHON_NODE_URL = process.env.NEXT_PUBLIC_PYTHON_URL || 'https://novoriq-ai-intergration.onrender.com';
 
 // --- TYPES ---
 type DashboardMetrics = {
@@ -32,7 +30,11 @@ type DashboardDispute = {
     stripeId: string;
     status: string;
     evidencePdfUrl?: string | null;
-    payment: { amount: number; };
+    payment: { 
+        amount: number; 
+        trustScore?: number | null;
+        aiRecommendation?: string | null;
+    };
 };
 
 type DashboardMetricsResponse = {
@@ -86,7 +88,7 @@ export default function DashboardPage() {
     const [webhookCopied, setWebhookCopied] = useState(false);
     const [systemError, setSystemError] = useState(false); 
     
-    // [NEW] Notification State for Python Backend Actions
+    // Notification State for AI Actions
     const [aiNotification, setAiNotification] = useState<{show: boolean, message: string}>({ show: false, message: '' });
 
     const fetchData = useCallback(async () => {
@@ -171,37 +173,24 @@ export default function DashboardPage() {
         } catch { alert("Secure document retrieval failed."); }
     };
 
-    // --- [NEW] PYTHON BACKEND CONNECTION ---
+    // --- SECURE AI BRIDGE (Ghost Node Cleanup Applied) ---
     const testAiRecoveryAction = async () => {
         try {
-            // Display loading notification instantly
             setAiNotification({ show: true, message: 'Initiating AI Recovery Protocol...' });
             
-            // Ping the Python Intelligence Node
-            // Note: In production, ensure the x-internal-key matches your Python .env
-            await fetch(`${PYTHON_NODE_URL}/api/v1/trigger-churn-guard`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'x-internal-key': process.env.NEXT_PUBLIC_INTERNAL_KEY || 'nvq_internal_super_secret_key_123'
-                },
-                body: JSON.stringify({
-                    organization_id: metrics?.organizationId || "demo_org",
-                    customer_email: "test@client.com",
-                    decline_code: "insufficient_funds",
-                    days_until_expiration: 0
-                })
+            // Hitting Secure Node.js Bridge to avoid CSP errors
+            await api.post('/dashboard/ai-test', {
+                organization_id: metrics?.organizationId || "demo_org",
+                customer_email: "test@client.com",
+                decline_code: "insufficient_funds"
             });
 
-            // Update notification upon success
             setAiNotification({ show: true, message: 'AI Action Logged: Recovery SMS & Email Sent Successfully.' });
-            
-            // Auto-hide after 5 seconds
             setTimeout(() => setAiNotification({ show: false, message: '' }), 5000);
             
         } catch (error) {
-            console.error("[Python Connection Error]:", error);
-            setAiNotification({ show: true, message: 'Warning: Python Node Unreachable.' });
+            console.error("[Node Bridge Error]:", error);
+            setAiNotification({ show: true, message: 'Warning: Bridge Communication Failed.' });
             setTimeout(() => setAiNotification({ show: false, message: '' }), 4000);
         }
     };
@@ -237,7 +226,7 @@ export default function DashboardPage() {
     return (
         <div className="min-h-screen bg-[#FDFDFD] text-zinc-900 font-sans p-4 md:p-8 overflow-x-hidden selection:bg-zinc-200 selection:text-zinc-900 relative">
             
-            {/* [NEW] FLOATING AI NOTIFICATION TOAST */}
+            {/* FLOATING AI NOTIFICATION TOAST */}
             <AnimatePresence>
                 {aiNotification.show && (
                     <motion.div 
@@ -272,7 +261,6 @@ export default function DashboardPage() {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                        {/* [NEW] Trigger Python Action Button (For Demo/Testing) */}
                         <button 
                             onClick={testAiRecoveryAction}
                             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
@@ -315,18 +303,27 @@ export default function DashboardPage() {
                             
                             {!metrics.hasStripeKey ? (
                                 <form onSubmit={handleConnectStripe} className="space-y-5">
-                                    <p className="text-xs text-zinc-500 font-medium">Inject your restricted API key to arm the monitoring protocol.</p>
-                                    <input type="password" placeholder="rk_live_••••••••" value={stripeKey} onChange={(e) => setStripeKey(e.target.value)} className="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-900 rounded-xl px-4 py-3.5 text-sm text-zinc-900 font-mono outline-none" required />
-                                    <button type="submit" disabled={isKeyLoading} className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl py-3.5 text-sm font-bold flex justify-center items-center gap-2 active:scale-[0.98] transition-all">
+                                    <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-xs text-zinc-600 space-y-2">
+                                        <p className="font-bold text-zinc-900 mb-2">How to securely connect Stripe:</p>
+                                        <ol className="list-decimal pl-4 space-y-1.5 marker:text-zinc-400">
+                                            <li>Go to your Stripe Dashboard &rarr; <strong>Developers</strong> &rarr; <strong>API Keys</strong>.</li>
+                                            <li>Click <strong>Create restricted key</strong> (do not use your Secret Key).</li>
+                                            <li>Grant <strong>Read</strong> access to <strong>Disputes</strong> and <strong>Charges</strong>.</li>
+                                            <li>Paste the new key (<code className="font-mono bg-zinc-200 px-1 rounded text-zinc-800">rk_live_...</code>) below.</li>
+                                        </ol>
+                                    </div>
+                                    
+                                    <input type="password" placeholder="rk_live_••••••••" value={stripeKey} onChange={(e) => setStripeKey(e.target.value)} className="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-900 rounded-xl px-4 py-3.5 text-sm text-zinc-900 font-mono outline-none transition-colors" required />
+                                    <button type="submit" disabled={isKeyLoading} className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl py-3.5 text-sm font-bold flex justify-center items-center gap-2 active:scale-[0.98] transition-all shadow-sm">
                                         {isKeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Seal Vault <ArrowRight className="w-4 h-4" /></>}
                                     </button>
                                 </form>
                             ) : (
                                 <div className="flex items-center gap-4 border border-zinc-200 p-4 bg-zinc-50 rounded-xl">
-                                    <div className="bg-white p-2 rounded-lg border border-zinc-200"><Lock className="w-5 h-5 text-zinc-900" /></div>
+                                    <div className="bg-white p-2 rounded-lg border border-zinc-200 shadow-sm"><Lock className="w-5 h-5 text-zinc-900" /></div>
                                     <div>
                                         <div className="text-sm font-bold text-zinc-900">Vault Secured</div>
-                                        <div className="text-xs font-medium text-zinc-500 mt-0.5">AES-256 Active</div>
+                                        <div className="text-xs font-medium text-zinc-500 mt-0.5">AES-256 Active & Monitoring</div>
                                     </div>
                                 </div>
                             )}
@@ -340,25 +337,37 @@ export default function DashboardPage() {
                                 <div className="bg-zinc-100 p-2 rounded-md"><LinkIcon className="w-4 h-4 text-zinc-700" /></div>
                                 <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Data Relay</h3>
                             </div>
-                            <p className="text-xs text-zinc-500 font-medium leading-relaxed mb-5">Endpoint established. Mount this in your external processor.</p>
-                            <div className="bg-zinc-900 text-zinc-300 rounded-xl p-4 text-[11px] font-mono break-all mb-5">{`${LIVE_ENGINE_URL}/api/webhooks/stripe/${metrics.organizationId}`}</div>
-                            <button onClick={copyWebhook} className="w-full bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-900 rounded-xl py-3.5 text-sm font-bold flex justify-center items-center gap-2 active:scale-[0.98] transition-all">
-                                {webhookCopied ? <><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Copied</> : 'Copy Payload URL'}
+                            
+                            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 mb-5 text-xs text-zinc-600 space-y-2">
+                                <p className="font-bold text-zinc-900 mb-2">How to activate real-time defense:</p>
+                                <ol className="list-decimal pl-4 space-y-1.5 marker:text-zinc-400">
+                                    <li>Go to Stripe Dashboard &rarr; <strong>Developers</strong> &rarr; <strong>Webhooks</strong>.</li>
+                                    <li>Click <strong>Add Endpoint</strong> and paste the URL provided below.</li>
+                                    <li>Select the event to listen to: <code className="font-mono bg-zinc-200 px-1 rounded text-zinc-800">charge.dispute.created</code></li>
+                                    <li>Click Save.</li>
+                                </ol>
+                            </div>
+
+                            <div className="bg-zinc-900 text-zinc-300 rounded-xl p-4 text-[11px] font-mono break-all mb-5 shadow-inner">{`${LIVE_ENGINE_URL}/api/webhooks/stripe/${metrics.organizationId}`}</div>
+                            <button onClick={copyWebhook} className="w-full bg-white border border-zinc-200 hover:border-zinc-900 hover:text-zinc-900 text-zinc-700 rounded-xl py-3.5 text-sm font-bold flex justify-center items-center gap-2 active:scale-[0.98] transition-all">
+                                {webhookCopied ? <><CheckCircle2 className="w-4 h-4 text-emerald-600" /> URL Copied to Clipboard</> : 'Copy Payload URL'}
                             </button>
                         </motion.div>
                     </aside>
 
                     <motion.main variants={itemVariants} className="lg:col-span-8 bg-white rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col">
-                        <div className="p-7 border-b border-zinc-100 flex justify-between items-center">
+                        <div className="p-7 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/30">
                             <h2 className="text-sm font-bold tracking-wide uppercase text-zinc-900 flex items-center gap-3"><Activity className="w-4 h-4 text-zinc-400" /> Transaction Ledger</h2>
                         </div>
                         
                         <div className="overflow-x-auto flex-1">
                             <table className="w-full text-sm text-left whitespace-nowrap">
-                                <thead className="bg-zinc-50/50 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
+                                <thead className="bg-zinc-50/80 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
                                     <tr>
                                         <th className="px-7 py-5">Network ID</th>
                                         <th className="px-7 py-5">Contested</th>
+                                        <th className="px-7 py-5">AI Trust Score</th>
+                                        <th className="px-7 py-5">Recommendation</th>
                                         <th className="px-7 py-5">Resolution</th>
                                         <th className="px-7 py-5 text-right">Dossier</th>
                                     </tr>
@@ -368,6 +377,25 @@ export default function DashboardPage() {
                                         <motion.tr variants={itemVariants} key={d.id} className="hover:bg-zinc-50/80 transition-colors">
                                             <td className="px-7 py-5 font-mono text-zinc-500 text-xs">{d.stripeId}</td>
                                             <td className="px-7 py-5 font-bold text-zinc-900">${(d.payment.amount / 100).toLocaleString()}</td>
+                                            
+                                            <td className="px-7 py-5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full ${
+                                                        d.payment?.trustScore && d.payment.trustScore >= 75 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 
+                                                        d.payment?.trustScore && d.payment.trustScore >= 40 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 
+                                                        d.payment?.trustScore ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : 
+                                                        'bg-zinc-300'
+                                                    }`} />
+                                                    <span className="font-bold text-zinc-900">
+                                                        {d.payment?.trustScore ? `${d.payment.trustScore}/100` : '--/100'}
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-7 py-5 text-xs font-medium text-zinc-600 max-w-[150px] truncate">
+                                                {d.payment?.aiRecommendation || 'Awaiting Node Analysis...'}
+                                            </td>
+
                                             <td className="px-7 py-5">
                                                 <span className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${d.status.toLowerCase() === 'won' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-zinc-100 text-zinc-600 border border-zinc-200'}`}>
                                                     {d.status}

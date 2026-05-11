@@ -45,8 +45,6 @@ export default function LoginPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // [DEBUG TRACER 1] Proves the button click actually triggered the function
-        console.log("[Auth Protocol] Form submitted. Setting loading state...");
         setLoading(true);
         setError('');
 
@@ -56,27 +54,16 @@ export default function LoginPage() {
                 ? { email, password } 
                 : { email, password, organizationName: orgName, promoCode };
 
-            // [DEBUG TRACER 2] Proves the payload was formatted correctly
-            console.log(`[Auth Protocol] Attempting to hit ${endpoint} with:`, payload);
-
-            // If the code freezes, it is hanging EXACTLY on this next line.
             const res = await api.post<AuthResponse>(endpoint, payload);
-            
-            // [DEBUG TRACER 3] Proves the server responded
-            console.log("[Auth Protocol] Server Response Received:", res.data);
 
             if (res.data?.token) {
                 localStorage.setItem('novoriq_token', res.data.token);
-                console.log("[Auth Protocol] Token secured. Redirecting to Dashboard...");
                 router.push('/dashboard');
             } else {
                 throw new Error("Invalid response format: Missing token");
             }
 
         } catch (err: unknown) {
-            // [DEBUG TRACER 4] Catches any silent crashes
-            console.error("[Auth Protocol] CRITICAL FAILURE:", err);
-            
             const apiError = isAxiosError<{ error?: string }>(err) ? err.response?.data?.error : undefined;
             const errorMessage = apiError
                 || (err instanceof Error ? err.message : undefined)
@@ -84,7 +71,6 @@ export default function LoginPage() {
             
             setError(errorMessage);
         } finally {
-            console.log("[Auth Protocol] Execution finished. Removing loading state.");
             setLoading(false);
         }
     };
@@ -114,7 +100,7 @@ export default function LoginPage() {
                         Novoriq Revenue OS
                     </h1>
                     <p className="text-sm text-zinc-500 mt-2 font-medium">
-                        {isLogin ? "Sign in to your workspace" : "Initialize your automated engine"}
+                        {isLogin ? "Sign in to your workspace" : "Create your recovery workspace"}
                     </p>
                 </div>
 
@@ -149,7 +135,7 @@ export default function LoginPage() {
                                     <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Work Email</label>
                                     <input 
                                         type="email"
-                                        placeholder="commander@company.com"
+                                            placeholder="finance@company.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-zinc-900 text-sm focus:bg-white focus:border-zinc-900 transition-all outline-none"
@@ -174,7 +160,7 @@ export default function LoginPage() {
                                         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Invite Code</label>
                                         <input 
                                             type="text"
-                                            placeholder="VIP-ACCESS"
+                                            placeholder="ACCESS-CODE"
                                             value={promoCode}
                                             onChange={(e) => setPromoCode(e.target.value)}
                                             className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-zinc-900 text-sm focus:bg-white focus:border-zinc-900 transition-all outline-none"
@@ -190,7 +176,7 @@ export default function LoginPage() {
                             className="w-full bg-zinc-900 text-white rounded-xl py-3.5 px-4 flex items-center justify-center gap-2 hover:bg-zinc-800 active:scale-[0.98] transition-all duration-200 disabled:opacity-70 disabled:active:scale-100 shadow-lg shadow-zinc-900/10 mt-6"
                         >
                             <span className="text-sm font-bold tracking-wide">
-                                {loading ? "Authenticating..." : (isLogin ? "Sign In" : "Initialize Engine")}
+                                {loading ? "Please wait..." : (isLogin ? "Sign In" : "Create Workspace")}
                             </span>
                             {loading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

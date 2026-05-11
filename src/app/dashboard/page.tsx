@@ -6,7 +6,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import api from '@/lib/api';
 import { 
   Activity, ShieldCheck, Key, FileText, Download, 
-  Link as LinkIcon, CheckCircle2, Cpu, Zap, Lock, Loader2, ArrowRight, Bell 
+  Link as LinkIcon, CheckCircle2, Cpu, Lock, Loader2, ArrowRight, Bell 
 } from 'lucide-react';
 
 const LIVE_ENGINE_URL = 'https://novoriqrevenueosapi.onrender.com';
@@ -102,10 +102,10 @@ export default function DashboardPage() {
             metricsData.revenueRecoveredFormatted = metricsData.revenueRecoveredFormatted || '$0.00';
 
             const rawTier = metricsData.tier || metricsRes.data.tier || metricsRes.data.organization?.tier;
-            const isGodMode = rawTier === 'ALL_TIERS' || metricsData.currentTierLabel === 'ALL_TIERS';
+            const isFounderAccess = rawTier === 'ALL_TIERS' || metricsData.currentTierLabel === 'ALL_TIERS';
 
-            if (isGodMode) {
-                metricsData.currentTierLabel = 'Enterprise (God Mode)';
+            if (isFounderAccess) {
+                metricsData.currentTierLabel = 'Enterprise Access';
                 metricsData.pdfLimit = 'Unlimited';
                 metricsData.currentFeeLabel = '0% Waived';
             } else {
@@ -173,10 +173,10 @@ export default function DashboardPage() {
         } catch { alert("Secure document retrieval failed."); }
     };
 
-    // --- SECURE AI BRIDGE (Ghost Node Cleanup Applied) ---
+    // --- INTERNAL DELIVERY TEST ---
     const testAiRecoveryAction = async () => {
         try {
-            setAiNotification({ show: true, message: 'Initiating AI Recovery Protocol...' });
+            setAiNotification({ show: true, message: 'Sending recovery delivery test...' });
             
             // Hitting Secure Node.js Bridge to avoid CSP errors
             await api.post('/dashboard/ai-test', {
@@ -185,12 +185,12 @@ export default function DashboardPage() {
                 decline_code: "insufficient_funds"
             });
 
-            setAiNotification({ show: true, message: 'AI Action Logged: Recovery SMS & Email Sent Successfully.' });
+            setAiNotification({ show: true, message: 'Delivery test logged successfully.' });
             setTimeout(() => setAiNotification({ show: false, message: '' }), 5000);
             
         } catch (error) {
             console.error("[Node Bridge Error]:", error);
-            setAiNotification({ show: true, message: 'Warning: Bridge Communication Failed.' });
+            setAiNotification({ show: true, message: 'Delivery test could not be completed.' });
             setTimeout(() => setAiNotification({ show: false, message: '' }), 4000);
         }
     };
@@ -202,10 +202,10 @@ export default function DashboardPage() {
                 <div className="bg-red-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 rotate-3">
                     <Cpu className="w-8 h-8 text-red-600" />
                 </div>
-                <h1 className="text-2xl font-bold text-zinc-900 mb-2">System Offline</h1>
-                <p className="text-sm text-zinc-500 mb-8 leading-relaxed">Backend nexus unreachable. Ensure engine is online.</p>
+                <h1 className="text-2xl font-bold text-zinc-900 mb-2">Service Unavailable</h1>
+                <p className="text-sm text-zinc-500 mb-8 leading-relaxed">The recovery API is not responding. Retry in a moment or check the backend deployment.</p>
                 <button type="button" onClick={() => window.location.reload()} className="w-full bg-zinc-900 text-white rounded-xl py-3.5 text-sm font-semibold hover:bg-zinc-800 transition-all">
-                    Retry Handshake
+                    Retry
                 </button>
             </motion.div>
         </div>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
                     <div className="absolute inset-0 blur-xl bg-zinc-200 rounded-full animate-pulse" />
                     <NovoriqLogo />
                 </div>
-                <span className="text-sm font-bold text-zinc-900 tracking-wider uppercase">Initializing Nexus</span>
+                <span className="text-sm font-bold text-zinc-900 tracking-wider uppercase">Loading workspace</span>
             </motion.div>
         </div>
     );
@@ -256,21 +256,13 @@ export default function DashboardPage() {
                             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 flex items-center gap-3">
                                 Novoriq OS <span className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase bg-zinc-100 px-2.5 py-1 rounded-md">v2.1.0</span>
                             </h1>
-                            <p className="text-sm text-zinc-500 font-medium mt-1">Autonomous Revenue Defense & Evidence Compilation</p>
+                            <p className="text-sm text-zinc-500 font-medium mt-1">Stripe dispute review, evidence preparation, and document delivery</p>
                         </div>
                     </div>
                     
                     <div className="flex items-center gap-3">
-                        <button 
-                            onClick={testAiRecoveryAction}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
-                        >
-                            <Zap className="w-3.5 h-3.5 text-blue-400" />
-                            Test AI Copilot
-                        </button>
-                        
                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-white shadow-sm text-xs font-bold text-zinc-700 uppercase tracking-wider">
-                            <div className={`w-2 h-2 rounded-full ${metrics.currentTierLabel?.includes('God') ? 'bg-emerald-500' : 'bg-blue-500'} animate-pulse shadow-[0_0_8px_rgba(0,0,0,0.1)]`} />
+                            <div className={`w-2 h-2 rounded-full ${metrics.currentTierLabel?.includes('Enterprise') ? 'bg-emerald-500' : 'bg-blue-500'} shadow-[0_0_8px_rgba(0,0,0,0.1)]`} />
                             {metrics.currentTierLabel}
                         </div>
                     </div>
@@ -278,10 +270,10 @@ export default function DashboardPage() {
 
                 <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {[
-                        { label: 'Network Disputes', val: metrics.totalDisputes, icon: Activity },
-                        { label: 'Revenue Secured', val: metrics.revenueRecoveredFormatted, icon: ShieldCheck },
-                        { label: 'Evidence Capacity', val: `${metrics.pdfsGenerated} / ${metrics.pdfLimit}`, icon: FileText },
-                        { label: 'Protocol Fee', val: metrics.performanceFeeOwedFormatted, icon: Cpu },
+                        { label: 'Disputes Reviewed', val: metrics.totalDisputes, icon: Activity },
+                        { label: 'Recovered Revenue', val: metrics.revenueRecoveredFormatted, icon: ShieldCheck },
+                        { label: 'Evidence Documents', val: `${metrics.pdfsGenerated} / ${metrics.pdfLimit}`, icon: FileText },
+                        { label: 'Performance Fee', val: metrics.performanceFeeOwedFormatted, icon: Cpu },
                     ].map((m) => (
                         <motion.div variants={itemVariants} key={m.label} className="bg-white rounded-2xl border border-zinc-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
                             <div className="flex items-center justify-between mb-6">
@@ -298,7 +290,7 @@ export default function DashboardPage() {
                         <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="bg-zinc-100 p-2 rounded-md"><Key className="w-4 h-4 text-zinc-700" /></div>
-                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Cryptographic Vault</h3>
+                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Stripe Connection</h3>
                             </div>
                             
                             {!metrics.hasStripeKey ? (
@@ -315,15 +307,15 @@ export default function DashboardPage() {
                                     
                                     <input type="password" placeholder="rk_live_••••••••" value={stripeKey} onChange={(e) => setStripeKey(e.target.value)} className="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-900 rounded-xl px-4 py-3.5 text-sm text-zinc-900 font-mono outline-none transition-colors" required />
                                     <button type="submit" disabled={isKeyLoading} className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl py-3.5 text-sm font-bold flex justify-center items-center gap-2 active:scale-[0.98] transition-all shadow-sm">
-                                        {isKeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Seal Vault <ArrowRight className="w-4 h-4" /></>}
+                                        {isKeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Connect Stripe <ArrowRight className="w-4 h-4" /></>}
                                     </button>
                                 </form>
                             ) : (
                                 <div className="flex items-center gap-4 border border-zinc-200 p-4 bg-zinc-50 rounded-xl">
                                     <div className="bg-white p-2 rounded-lg border border-zinc-200 shadow-sm"><Lock className="w-5 h-5 text-zinc-900" /></div>
                                     <div>
-                                        <div className="text-sm font-bold text-zinc-900">Vault Secured</div>
-                                        <div className="text-xs font-medium text-zinc-500 mt-0.5">AES-256 Active & Monitoring</div>
+                                        <div className="text-sm font-bold text-zinc-900">Stripe Connected</div>
+                                        <div className="text-xs font-medium text-zinc-500 mt-0.5">Credentials encrypted at rest</div>
                                     </div>
                                 </div>
                             )}
@@ -335,11 +327,11 @@ export default function DashboardPage() {
                         <motion.div variants={itemVariants} animate={{ opacity: !metrics.hasStripeKey ? 0.4 : 1 }} className={`bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm ${!metrics.hasStripeKey ? 'pointer-events-none' : ''}`}>
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="bg-zinc-100 p-2 rounded-md"><LinkIcon className="w-4 h-4 text-zinc-700" /></div>
-                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Data Relay</h3>
+                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Stripe Webhook</h3>
                             </div>
                             
                             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 mb-5 text-xs text-zinc-600 space-y-2">
-                                <p className="font-bold text-zinc-900 mb-2">How to activate real-time defense:</p>
+                                <p className="font-bold text-zinc-900 mb-2">How to receive new dispute events:</p>
                                 <ol className="list-decimal pl-4 space-y-1.5 marker:text-zinc-400">
                                     <li>Go to Stripe Dashboard &rarr; <strong>Developers</strong> &rarr; <strong>Webhooks</strong>.</li>
                                     <li>Click <strong>Add Endpoint</strong> and paste the URL provided below.</li>
@@ -350,24 +342,24 @@ export default function DashboardPage() {
 
                             <div className="bg-zinc-900 text-zinc-300 rounded-xl p-4 text-[11px] font-mono break-all mb-5 shadow-inner">{`${LIVE_ENGINE_URL}/api/webhooks/stripe/${metrics.organizationId}`}</div>
                             <button onClick={copyWebhook} className="w-full bg-white border border-zinc-200 hover:border-zinc-900 hover:text-zinc-900 text-zinc-700 rounded-xl py-3.5 text-sm font-bold flex justify-center items-center gap-2 active:scale-[0.98] transition-all">
-                                {webhookCopied ? <><CheckCircle2 className="w-4 h-4 text-emerald-600" /> URL Copied to Clipboard</> : 'Copy Payload URL'}
+                                {webhookCopied ? <><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Webhook URL Copied</> : 'Copy Webhook URL'}
                             </button>
                         </motion.div>
                     </aside>
 
                     <motion.main variants={itemVariants} className="lg:col-span-8 bg-white rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col">
                         <div className="p-7 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/30">
-                            <h2 className="text-sm font-bold tracking-wide uppercase text-zinc-900 flex items-center gap-3"><Activity className="w-4 h-4 text-zinc-400" /> Transaction Ledger</h2>
+                            <h2 className="text-sm font-bold tracking-wide uppercase text-zinc-900 flex items-center gap-3"><Activity className="w-4 h-4 text-zinc-400" /> Dispute Review Queue</h2>
                         </div>
                         
                         <div className="overflow-x-auto flex-1">
                             <table className="w-full text-sm text-left whitespace-nowrap">
                                 <thead className="bg-zinc-50/80 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
                                     <tr>
-                                        <th className="px-7 py-5">Network ID</th>
-                                        <th className="px-7 py-5">Contested</th>
-                                        <th className="px-7 py-5">AI Trust Score</th>
-                                        <th className="px-7 py-5">Recommendation</th>
+                                        <th className="px-7 py-5">Dispute ID</th>
+                                        <th className="px-7 py-5">Amount</th>
+                                        <th className="px-7 py-5">Evidence Score</th>
+                                        <th className="px-7 py-5">Review Note</th>
                                         <th className="px-7 py-5">Resolution</th>
                                         <th className="px-7 py-5 text-right">Dossier</th>
                                     </tr>
@@ -393,7 +385,7 @@ export default function DashboardPage() {
                                             </td>
 
                                             <td className="px-7 py-5 text-xs font-medium text-zinc-600 max-w-[150px] truncate">
-                                                {d.payment?.aiRecommendation || 'Awaiting Node Analysis...'}
+                                                {d.payment?.aiRecommendation || 'Awaiting transaction review'}
                                             </td>
 
                                             <td className="px-7 py-5">
@@ -404,10 +396,10 @@ export default function DashboardPage() {
                                             <td className="px-7 py-5 text-right">
                                                 {d.evidencePdfUrl ? (
                                                     <button onClick={() => downloadPdf(d.id)} className="text-zinc-900 hover:text-blue-600 flex items-center gap-2 ml-auto text-xs font-bold transition-colors">
-                                                        <Download className="w-4 h-4" /> Export
+                                                        <Download className="w-4 h-4" /> Download
                                                     </button>
                                                 ) : (
-                                                    <span className="text-zinc-400 text-xs font-semibold flex items-center gap-2 justify-end"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Compiling</span>
+                                                    <span className="text-zinc-400 text-xs font-semibold flex items-center gap-2 justify-end"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Preparing</span>
                                                 )}
                                             </td>
                                         </motion.tr>
@@ -417,7 +409,7 @@ export default function DashboardPage() {
                             {disputes.length === 0 && (
                                 <div className="py-32 text-center flex flex-col items-center justify-center gap-4">
                                     <div className="bg-zinc-50 p-5 rounded-2xl border border-zinc-100"><ShieldCheck className="w-8 h-8 text-zinc-300" /></div>
-                                    <div className="text-zinc-400 text-sm font-medium tracking-wide">Network clear. No active disputes detected.</div>
+                                    <div className="text-zinc-400 text-sm font-medium tracking-wide">No disputes are currently queued for review.</div>
                                 </div>
                             )}
                         </div>

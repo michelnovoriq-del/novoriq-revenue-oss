@@ -19,7 +19,7 @@ const PLANS = [
     duration: 'One-time',
     fee: '0%',
     description: 'Entry-level access for early adopters and testing.',
-    features: ['Simulated Environment Access', '48-Hour Trial Window', 'Manual PDF Generation', 'Standard Support'],
+    features: ['Workspace access', '48-hour review window', 'Manual PDF generation', 'Standard support'],
     highlight: false,
     cta: 'Secure Beta Access'
   },
@@ -29,8 +29,8 @@ const PLANS = [
     price: '$199',
     duration: '/mo',
     fee: '10.0%',
-    description: 'Essential defense for Micro-SaaS growth.',
-    features: ['Autonomous Monitoring', 'Standard Evidence Compilation', 'Up to 10 Disputes/mo', 'Protocol Fee: 10%'],
+    description: 'Essential dispute review for early SaaS teams.',
+    features: ['Stripe dispute monitoring', 'Standard evidence documents', 'Up to 10 disputes/mo', 'Performance fee: 10%'],
     highlight: false,
     cta: 'Deploy Starter'
   },
@@ -40,8 +40,8 @@ const PLANS = [
     price: '$399',
     duration: '/mo',
     fee: '5.0%',
-    description: 'High-volume protection for established platforms.',
-    features: ['Priority Engine Access', 'Advanced Evidence Dossiers', 'Unlimited Disputes', 'Protocol Fee: 5%'],
+    description: 'Higher-volume recovery operations for established platforms.',
+    features: ['Priority processing', 'Advanced evidence documents', 'Unlimited disputes', 'Performance fee: 5%'],
     highlight: true,
     cta: 'Go Professional'
   },
@@ -51,8 +51,8 @@ const PLANS = [
     price: '$799',
     duration: '/mo',
     fee: '3.5%',
-    description: 'Elite autonomous ROI for 9-figure scaling.',
-    features: ['Full God Mode Access', 'Programmatic Submission', 'VIP Direct Response', 'Protocol Fee: 3.5%'],
+    description: 'Operational support for larger dispute volumes.',
+    features: ['Enterprise workspace access', 'Programmatic workflows', 'Priority response', 'Performance fee: 3.5%'],
     highlight: false,
     cta: 'Scale to Enterprise'
   }
@@ -62,8 +62,10 @@ export default function PricingPage() {
   const router = useRouter();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
   useEffect(() => {
+    setPaymentStatus(new URLSearchParams(window.location.search).get('status'));
     // Attempt to grab Org ID for metadata linking
     api.get('/dashboard/metrics')
       .then(res => setOrgId(res.data.metrics.organizationId))
@@ -76,9 +78,13 @@ export default function PricingPage() {
       return;
     }
     setLoadingPlan(planId);
-    // Deep link to Whop with the external_id for our webhook nexus
-    const checkoutUrl = `https://whop.com/checkout/${planId}?external_id=${orgId}`;
-    window.location.href = checkoutUrl;
+    // Deep link to Whop with organization metadata for webhook provisioning.
+    const checkoutUrl = new URL(`https://whop.com/checkout/${planId}`);
+    checkoutUrl.searchParams.set('external_id', orgId);
+    checkoutUrl.searchParams.set('success_url', `${window.location.origin}/pricing?status=success`);
+    checkoutUrl.searchParams.set('cancel_url', `${window.location.origin}/pricing?status=cancelled`);
+    checkoutUrl.searchParams.set('metadata[organizationId]', orgId);
+    window.location.href = checkoutUrl.toString();
   };
 
   return (
@@ -88,19 +94,29 @@ export default function PricingPage() {
 
       <div className="max-w-7xl mx-auto relative z-10">
         <header className="text-center mb-16 space-y-4">
+          {paymentStatus === 'success' && (
+            <div className="mx-auto mb-6 max-w-2xl rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-800">
+              Payment confirmed. Your workspace access will unlock as soon as the billing webhook finishes provisioning.
+            </div>
+          )}
+          {paymentStatus === 'cancelled' && (
+            <div className="mx-auto mb-6 max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
+              Checkout was not completed. You can select a plan again when ready.
+            </div>
+          )}
           <motion.div 
             initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-[10px] font-bold uppercase tracking-widest text-zinc-500"
           >
-            <ShieldCheck className="w-3 h-3" /> Protocol Version 2.1.0
+            <ShieldCheck className="w-3 h-3" /> Recovery Workspace
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-extrabold tracking-tighter text-zinc-900"
           >
-            The Revenue OS Pricing
+            Recovery Workspace Pricing
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 10 }} 
@@ -108,7 +124,7 @@ export default function PricingPage() {
             transition={{ delay: 0.1 }}
             className="text-zinc-500 font-medium max-w-2xl mx-auto"
           >
-            Select your tier of autonomous defense. Every plan includes our proprietary AES-256 vault and the automated evidence engine.
+            Select the level of dispute review and evidence delivery your team needs. Stripe credentials are encrypted at rest and used only for recovery operations.
           </motion.p>
         </header>
 
@@ -184,12 +200,12 @@ export default function PricingPage() {
 
         <footer className="mt-20 text-center space-y-6">
           <div className="flex flex-wrap justify-center gap-8 opacity-50 grayscale hover:grayscale-0 transition-all">
-            <div className="flex items-center gap-2"><Lock className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">AES-256 Encrypted</span></div>
-            <div className="flex items-center gap-2"><Globe className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Global Data Relay</span></div>
-            <div className="flex items-center gap-2"><Zap className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Instant Provisioning</span></div>
+            <div className="flex items-center gap-2"><Lock className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Encrypted Credentials</span></div>
+            <div className="flex items-center gap-2"><Globe className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Stripe Webhook Support</span></div>
+            <div className="flex items-center gap-2"><Zap className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Immediate Workspace Access</span></div>
           </div>
           <p className="text-[10px] text-zinc-400 font-medium">
-            Deployments are final. Subscription tiers are billed via Whop. Protocol fees are calculated and tracked autonomously via the Transaction Ledger.
+            Subscription tiers are billed via Whop. Performance fees are tracked in the workspace against recovered revenue.
           </p>
         </footer>
       </div>

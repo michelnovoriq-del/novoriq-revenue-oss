@@ -17,14 +17,14 @@ const BETA_PLAN_ID = 'plan_g5k8i3tfPkASV'; // $10 Beta Access
 
 // --- SIMULATED EXECUTIVE DATA ---
 const MOCK_METRICS = {
-    organizationId: 'demo_01_nexus',
+    organizationId: 'demo_01_workspace',
     totalDisputes: 24,
     revenueRecoveredFormatted: '$12,840.00',
     performanceFeeOwedFormatted: '$0.00',
     pdfsGenerated: 24,
     pdfLimit: 'Unlimited (Demo)',
     currentTierLabel: 'Interactive Demo',
-    currentFeeLabel: 'Elite Tier',
+    currentFeeLabel: 'Preview',
     hasStripeKey: false,
 };
 
@@ -80,7 +80,7 @@ export default function DemoPage() {
             if (MASTER_CODES.includes(promoCode.trim())) {
                 setIsUnlocked(true);
             } else {
-                setPromoError('Invalid Elite access code.');
+                setPromoError('Invalid access code.');
             }
             setIsUnlocking(false);
         }, 800);
@@ -123,7 +123,7 @@ export default function DemoPage() {
                             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 flex items-center gap-3">
                                 Novoriq OS <span className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase bg-zinc-100 px-2.5 py-1 rounded-md border border-zinc-200">Simulated Data</span>
                             </h1>
-                            <p className="text-sm text-zinc-500 font-medium mt-1">Autonomous Revenue Defense & Evidence Compilation</p>
+                            <p className="text-sm text-zinc-500 font-medium mt-1">Preview the dispute review and evidence delivery workspace</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-white shadow-sm text-xs font-bold text-zinc-400 uppercase tracking-wider">
@@ -134,10 +134,10 @@ export default function DemoPage() {
                 {/* --- METRICS GRID --- */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {[
-                        { label: 'Network Disputes', val: MOCK_METRICS.totalDisputes, icon: Activity },
-                        { label: 'Revenue Secured', val: MOCK_METRICS.revenueRecoveredFormatted, icon: ShieldCheck },
+                        { label: 'Disputes Reviewed', val: MOCK_METRICS.totalDisputes, icon: Activity },
+                        { label: 'Recovered Revenue', val: MOCK_METRICS.revenueRecoveredFormatted, icon: ShieldCheck },
                         { label: 'Evidence Capacity', val: MOCK_METRICS.pdfLimit, icon: FileText },
-                        { label: 'Protocol Fee', val: MOCK_METRICS.currentFeeLabel, icon: Cpu },
+                        { label: 'Workspace Mode', val: MOCK_METRICS.currentFeeLabel, icon: Cpu },
                     ].map((m) => (
                         <motion.div variants={itemVariants} key={m.label} className="bg-white rounded-2xl border border-zinc-200/60 p-6 shadow-sm relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] opacity-50 pointer-events-none" />
@@ -156,14 +156,14 @@ export default function DemoPage() {
                         <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-zinc-200/60 p-7 shadow-sm opacity-75 grayscale transition-all duration-500 hover:grayscale-0">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="bg-zinc-100 p-2 rounded-md"><Key className="w-4 h-4 text-zinc-700" /></div>
-                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Cryptographic Vault</h3>
+                                <h3 className="font-bold text-sm tracking-wide text-zinc-900 uppercase">Stripe Connection</h3>
                             </div>
                             <p className="text-xs text-zinc-500 font-medium mb-5">Vault operations are simulated in demo mode.</p>
                             <div className="flex items-center gap-4 border border-zinc-200 p-4 bg-zinc-50 rounded-xl">
                                 <div className="bg-white p-2 rounded-lg border border-zinc-200"><Lock className="w-5 h-5 text-zinc-400" /></div>
                                 <div>
                                     <div className="text-sm font-bold text-zinc-400">Vault Locked</div>
-                                    <div className="text-xs font-medium text-zinc-400">AES-256 Protocol</div>
+                                    <div className="text-xs font-medium text-zinc-400">Demo only</div>
                                 </div>
                             </div>
                         </motion.div>
@@ -180,8 +180,8 @@ export default function DemoPage() {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-zinc-50/50 text-zinc-400 text-[10px] uppercase tracking-widest font-bold border-b border-zinc-100">
                                     <tr>
-                                        <th className="px-7 py-5">Network ID</th>
-                                        <th className="px-7 py-5">Contested</th>
+                                <th className="px-7 py-5">Dispute ID</th>
+                                <th className="px-7 py-5">Amount</th>
                                         <th className="px-7 py-5">Resolution</th>
                                         <th className="px-7 py-5 text-right">Dossier</th>
                                     </tr>
@@ -214,13 +214,13 @@ export default function DemoPage() {
                     <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                         <div className="max-w-xl">
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-[10px] font-bold text-zinc-300 uppercase tracking-widest mb-6">
-                                <Sparkles className="w-3 h-3 text-emerald-400" /> Engine Ready
+                                <Sparkles className="w-3 h-3 text-emerald-400" /> Workspace Ready
                             </div>
                             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-                                Deploy the Autonomous Engine
+                                Start The Recovery Workspace
                             </h2>
                             <p className="text-zinc-400 font-medium leading-relaxed mb-8">
-                                You are currently viewing simulated data. Unlock the Novoriq OS to input your live Stripe keys, automate your webhook parsing, and start compiling evidence dossiers natively.
+                                You are viewing simulated data. Start the workspace to connect Stripe, receive dispute events, and generate evidence documents from live records.
                             </p>
 
                             <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -242,7 +242,7 @@ export default function DemoPage() {
 
                         {/* Master Code Fallback */}
                         <div className="w-full md:w-auto min-w-[280px] bg-zinc-950/50 p-6 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
-                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Elite Validation</h3>
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Access Code</h3>
                             <form onSubmit={handlePromoUnlock} className="space-y-3">
                                 <input 
                                     type="text" 
